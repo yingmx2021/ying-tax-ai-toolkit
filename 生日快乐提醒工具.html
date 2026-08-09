@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎂 生日快乐提醒小工具</title>
+<style>
+:root {
+  --primary: #E84B37;
+  --primary-light: #FF6B6B;
+  --primary-dark: #C62828;
+  --dark: #2C3E50;
+  --gold: #FFB300;
+  --gold-light: #FFF3CD;
+  --bg: #FFF5F5;
+  --card-bg: #FFFFFF;
+  --card-border: #E8E8E8;
+  --text: #333333;
+  --text-secondary: #666666;
+  --text-light: #999999;
+  --success: #4CAF50;
+  --warning: #FF9800;
+  --danger: #F44336;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-hover: 0 4px 20px rgba(0,0,0,0.12);
+  --radius: 12px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+/* ===== Header ===== */
+.header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  padding: 24px 0 20px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%);
+  animation: headerGlow 4s ease-in-out infinite;
+}
+@keyframes headerGlow {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(5%, 3%); }
+}
+.header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  position: relative;
+  z-index: 1;
+  letter-spacing: 2px;
+}
+.header .subtitle {
+  font-size: 13px;
+  opacity: 0.85;
+  margin-top: 4px;
+  position: relative;
+  z-index: 1;
+}
+/* ===== Reminder Banner ===== */
+.reminder-banner {
+  display: none;
+  padding: 16px 24px;
+  margin: 16px 20px 0;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 15px;
+  animation: slideDown 0.4s ease;
+  cursor: default;
+}
+.reminder-banner.show { display: flex; align-items:center; gap:10px; }
+.reminder-banner.today {
+  background: linear-gradient(135deg, #FFF3CD, #FFE082);
+  border: 2px solid var(--gold);
+  color: #7B6100;
+}
+.reminder-banner.tomorrow {
+  background: linear-gradient(135deg, #FFE0E0, #FFCDD2);
+  border: 2px solid var(--primary-light);
+  color: var(--primary-dark);
+}
+.reminder-banner.week {
+  background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+  border: 2px solid #42A5F5;
+  color: #1565C0;
+}
+@keyframes slideDown {
+  from { opacity:0; transform:translateY(-20px); }
+  to { opacity:1; transform:translateY(0); }
+}
+/* ===== Container ===== */
+.container { max-width: 960px; margin: 0 auto; padding: 20px; }
+/* ===== Stats Row ===== */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 18px 16px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.stat-card .stat-num { font-size: 32px; font-weight: 700; color: var(--primary); }
+.stat-card .stat-label { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+/* ===== Action Buttons ===== */
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(232,75,55,0.35); }
+.btn-outline { background: white; color: var(--primary); border: 2px solid var(--primary); }
+.btn-outline:hover { background: #FFF5F5; }
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { background: #388E3C; }
+.btn-warning { background: var(--warning); color: white; }
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+.btn-icon { padding: 8px; border-radius: 50%; min-width: 36px; justify-content: center; }
+/* ===== Section Title ===== */
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--card-border);
+}
+/* ===== People Grid ===== */
+.people-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.person-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+.person-card:hover { box-shadow: var(--shadow-hover); }
+.person-card.celebrated { border-color: var(--success); background: #F1F8E9; }
+.person-card.today-highlight {
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 20px rgba(255,179,0,0.2);
+  animation: pulseGold 2s ease-in-out infinite;
+}
+@keyframes pulseGold {
+  0%, 100% { box-shadow: 0 0 10px rgba(255,179,0,0.15); }
+  50% { box-shadow: 0 0 25px rgba(255,179,0,0.35); }
+}
+.person-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+.person-card .avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.avatar-parent { background: #FFE0E0; }
+.avatar-spouse { background: #FFE0F0; }
+.avatar-child { background: #FFF9C4; }
+.avatar-sibling { background: #E0F7FA; }
+.avatar-friend { background: #E8F5E9; }
+.avatar-colleague { background: #E3F2FD; }
+.avatar-other { background: #F3E5F5; }
+.person-card .card-actions { display: flex; gap: 4px; }
+.person-card .card-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background 0.2s;
+  color: var(--text-secondary);
+}
+.person-card .card-actions button:hover { background: #F0F0F0; color: var(--text); }
+.person-card .card-actions button.danger:hover { color: var(--danger); background: #FFEBEE; }
+.person-card .person-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--dark);
+  margin-left: 10px;
+}
+.person-card .person-rel {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--primary);
+  background: #FFF0EE;
+  padding: 2px 10px;
+  border-radius: 20px;
+  margin-left: 10px;
+  font-weight: 500;
+}
+.person-card .birthday-info {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+.person-card .countdown {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+.countdown.urgent { background: #FFEBEE; color: var(--danger); }
+.countdown.soon { background: #FFF3E0; color: #E65100; }
+.countdown.normal { background: #E8F5E9; color: #2E7D32; }
+.countdown.far { background: #F5F5F5; color: var(--text-light); }
+.person-card .notes {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-light);
+  font-style: italic;
+}
+/* ===== Heart Button ===== */
+.heart-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border: 2px solid var(--primary);
+  border-radius: 20px;
+  background: white;
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 10px;
+}
+.heart-btn:hover {
+  background: var(--primary);
+  color: white;
+  transform: scale(1.05);
+}
+.heart-btn.done {
+  background: var(--success);
+  border-color: var(--success);
+  color: white;
+  pointer-events: none;
+}
+.heart-btn .heart-icon {
+  font-size: 18px;
+  transition: transform 0.3s;
+}
+.heart-btn:hover .heart-icon { transform: scale(1.3); }
+/* ===== Confetti ===== */
+.confetti-container {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+}
+.confetti-piece {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  top: -20px;
+  animation: confettiFall linear forwards;
+}
+@keyframes confettiFall {
+  0% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg) scale(0.3); opacity: 0; }
+}
+/* ===== Modal ===== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.2s;
+}
+.modal-overlay.show { display: flex; }
+@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+.modal {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  animation: modalIn 0.3s ease;
+}
+@keyframes modalIn { from { opacity:0; transform:translateY(30px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
+.modal h3 { font-size: 20px; color: var(--dark); margin-bottom: 16px; }
+.modal .form-group { margin-bottom: 14px; }
+.modal label { display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+.modal input, .modal select, .modal textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text);
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+.modal input:focus, .modal select:focus, .modal textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(232,75,55,0.1);
+}
+.modal textarea { resize: vertical; min-height: 60px; }
+.modal .btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+/* ===== Wishes Modal ===== */
+.wish-card {
+  background: #FFF9F5;
+  border: 1px solid #FFE0CC;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 10px;
+  position: relative;
+}
+.wish-card .wish-text { font-size: 14px; color: var(--text); line-height: 1.8; }
+.wish-card .copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.wish-card .copy-btn:hover { background: var(--primary-dark); }
+/* ===== Gift Section ===== */
+.gift-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.gift-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  background: #FFF;
+  border: 1px solid var(--card-border);
+  color: var(--text-secondary);
+}
+.gift-tag.suggested { background: #FFF8E1; border-color: #FFD54F; color: #F57F17; }
+/* ===== History ===== */
+.history-list { margin-top: 8px; }
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #F9F9F9;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.history-item .check-icon { color: var(--success); font-size: 18px; }
+/* ===== Empty State ===== */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-light);
+}
+.empty-state .empty-icon { font-size: 64px; margin-bottom: 16px; }
+.empty-state p { font-size: 15px; margin-bottom: 20px; }
+/* ===== Footer ===== */
+.footer {
+  text-align: center;
+  padding: 24px 20px;
+  color: var(--text-light);
+  font-size: 13px;
+  border-top: 1px solid var(--card-border);
+  margin-top: 30px;
+}
+/* ===== Responsive ===== */
+@media (max-width: 640px) {
+  .header h1 { font-size: 22px; }
+  .stats-row { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat-card { padding: 12px 8px; }
+  .stat-card .stat-num { font-size: 24px; }
+  .people-grid { grid-template-columns: 1fr; }
+  .container { padding: 12px; }
+  .reminder-banner { margin: 12px 12px 0; padding: 12px 16px; font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>🎂 生日快乐提醒</h1>
+  <div class="subtitle">不再忘记每一个重要的人的生日</div>
+</div>
+
+<!-- Reminder Banner -->
+<div class="reminder-banner" id="reminderBanner"></div>
+
+<!-- Main Container -->
+<div class="container">
+
+  <!-- Stats Row -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num" id="statTotal">0</div>
+      <div class="stat-label">📋 重要的人</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statUpcoming">0</div>
+      <div class="stat-label">📅 即将到来(30天内)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statCelebrated">0</div>
+      <div class="stat-label">💝 今年已祝福</div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn btn-primary" onclick="openAddModal()">➕ 添加重要的人</button>
+    <button class="btn btn-outline" onclick="enableNotifications()">🔔 开启浏览器提醒</button>
+    <button class="btn btn-outline btn-sm" onclick="exportData()">📥 导出数据</button>
+    <button class="btn btn-outline btn-sm" onclick="document.getElementById('importFile').click()">📤 导入数据</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    <button class="btn btn-outline btn-sm" onclick="loadDemoData()">🎯 加载示例</button>
+  </div>
+
+  <!-- Upcoming Section -->
+  <div class="section-title">🔔 即将到来的生日</div>
+  <div class="people-grid" id="upcomingGrid">
+    <div class="empty-state">
+      <div class="empty-icon">📅</div>
+      <p>暂无即将到来的生日</p>
+      <button class="btn btn-primary" onclick="openAddModal()">➕ 添加重要的人</button>
+    </div>
+  </div>
+
+  <!-- All People Section -->
+  <div class="section-title" style="margin-top:24px;">👥 所有重要的人</div>
+  <div class="people-grid" id="allPeopleGrid">
+    <div class="empty-state">
+      <div class="empty-icon">💝</div>
+      <p>还没有添加任何人呢</p>
+      <p style="font-size:13px;color:var(--text-light);">点击上方按钮，把重要的人的生日记下来吧~</p>
+      <button class="btn btn-primary" onclick="openAddModal()">➕ 添加第一个</button>
+    </div>
+  </div>
+
+  <!-- History Section -->
+  <div class="section-title" style="margin-top:24px;">💝 祝福历史</div>
+  <div class="history-list" id="historyList">
+    <div class="empty-state" style="padding:30px;">
+      <p style="color:var(--text-light);">今年还没有送出祝福哦~</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  工具开发者公众号：致会计
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="personModal">
+  <div class="modal">
+    <h3 id="modalTitle">➕ 添加重要的人</h3>
+    <div class="form-group">
+      <label>姓名 *</label>
+      <input type="text" id="inputName" placeholder="如：妈妈" maxlength="20">
+    </div>
+    <div class="form-group">
+      <label>关系 *</label>
+      <select id="inputRelation">
+        <option value="">请选择关系</option>
+        <option value="父亲">👨 父亲</option>
+        <option value="母亲">👩 母亲</option>
+        <option value="配偶">💑 配偶/伴侣</option>
+        <option value="孩子">👶 孩子</option>
+        <option value="兄弟姐妹">👫 兄弟姐妹</option>
+        <option value="挚友">🤝 挚友</option>
+        <option value="同事">💼 同事</option>
+        <option value="其他">🌟 其他</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>生日 *</label>
+      <input type="date" id="inputBirthday">
+    </div>
+    <div class="form-group">
+      <label>备注（偏好、爱好等）</label>
+      <textarea id="inputNotes" placeholder="如：喜欢百合花、爱喝茶、不爱甜食..." maxlength="200"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" id="btnSave" onclick="savePerson()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Wishes Modal -->
+<div class="modal-overlay" id="wishesModal">
+  <div class="modal" style="max-width:550px;">
+    <h3 id="wishesTitle">💌 生日祝福语</h3>
+    <div id="giftSection" style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:600;color:var(--text-secondary);">🎁 礼物建议</label>
+      <div class="gift-tags" id="giftTags"></div>
+    </div>
+    <div id="wishesContent"></div>
+    <div class="btn-row">
+      <button class="btn btn-outline btn-sm" onclick="closeWishesModal()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confetti Container -->
+<div class="confetti-container" id="confettiContainer"></div>
+
+<script>
+// ===== DATA STORE =====
+const STORAGE_KEY = 'birthday_reminder_data';
+let appData = loadData();
+
+function getDefaultData() {
+  return {
+    people: [],
+    settings: {
+      reminderDays: [7, 1],
+      notificationsEnabled: false,
+      lastVisitDate: ''
+    }
+  };
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (!data.settings) data.settings = getDefaultData().settings;
+      return data;
+    }
+  } catch(e) { /* ignore */ }
+  return getDefaultData();
+}
+
+function saveData() {
+  appData.settings.lastVisitDate = getTodayStr();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+}
+
+function getTodayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+// ===== HELPERS =====
+function getNextBirthday(birthdayStr) {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const parts = birthdayStr.split('-');
+  const month = parseInt(parts[1]);
+  const day = parseInt(parts[2]);
+  
+  let nextBirthday = new Date(today.getFullYear(), month-1, day);
+  if (nextBirthday < today) {
+    nextBirthday = new Date(today.getFullYear()+1, month-1, day);
+  }
+  return nextBirthday;
+}
+
+function getDaysUntil(birthdayStr) {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const next = getNextBirthday(birthdayStr);
+  return Math.ceil((next - today) / (1000*60*60*24));
+}
+
+function getAge(birthdayStr) {
+  const parts = birthdayStr.split('-');
+  const birthYear = parseInt(parts[0]);
+  const today = new Date();
+  const nextBday = getNextBirthday(birthdayStr);
+  let age = today.getFullYear() - birthYear;
+  if (nextBday.getFullYear() > today.getFullYear()) {
+    age = today.getFullYear() - birthYear;
+  } else {
+    age = today.getFullYear() - birthYear;
+  }
+  return age;
+}
+
+function getRelationEmoji(rel) {
+  const map = {
+    '父亲': '👨', '母亲': '👩', '配偶': '💑', '孩子': '👶',
+    '兄弟姐妹': '👫', '挚友': '🤝', '同事': '💼', '其他': '🌟'
+  };
+  return map[rel] || '💝';
+}
+
+function getRelationAvatarClass(rel) {
+  const map = {
+    '父亲': 'avatar-parent', '母亲': 'avatar-parent', '配偶': 'avatar-spouse',
+    '孩子': 'avatar-child', '兄弟姐妹': 'avatar-sibling', '挚友': 'avatar-friend',
+    '同事': 'avatar-colleague', '其他': 'avatar-other'
+  };
+  return map[rel] || 'avatar-other';
+}
+
+function isCelebratedThisYear(personId) {
+  const year = new Date().getFullYear().toString();
+  const person = appData.people.find(p => p.id === personId);
+  if (!person || !person.celebrations) return false;
+  return person.celebrations[year] === true;
+}
+
+function celebrateBirthday(personId) {
+  const year = new Date().getFullYear().toString();
+  const person = appData.people.find(p => p.id === personId);
+  if (!person) return;
+  if (!person.celebrations) person.celebrations = {};
+  person.celebrations[year] = true;
+  saveData();
+  renderAll();
+}
+
+// ===== GIFT SUGGESTIONS =====
+function getGiftSuggestions(relation) {
+  const gifts = {
+    '父亲': ['茶叶礼盒', '皮带/钱包', '智能手表', '电动剃须刀', '按摩仪', '运动鞋', '保健品', '钓鱼装备'],
+    '母亲': ['鲜花', '护肤品套装', '丝巾/围巾', '包包', '按摩仪', '保健品', '金饰', '睡衣'],
+    '配偶': ['首饰/项链', '情侣手表', '浪漫晚餐', '旅行套餐', '香水', '定制礼物', '包包', '数码产品'],
+    '孩子': ['益智玩具', '绘本/书籍', '学习用品', '运动装备', '乐高积木', '游戏机', '新衣服', '亲子游'],
+    '兄弟姐妹': ['好书推荐', '文创产品', '电子产品', '运动装备', '潮流服饰', '音乐会门票'],
+    '挚友': ['好书', '文创手账', '香水', '定制礼物', '精酿啤酒', '聚餐请客', '盲盒/潮玩'],
+    '同事': ['茶叶', '办公好物', '书籍', '桌面摆件', '绿植盆栽', '咖啡礼盒'],
+    '其他': ['根据对方兴趣选择', '实用小家电', '美食礼盒', '书籍', '绿植', '文创产品']
+  };
+  return gifts[relation] || gifts['其他'];
+}
+
+// ===== WISHES =====
+function getWishes(name, relation) {
+  const templates = {
+    '母亲': [
+      name + '，生日快乐！感谢您一直以来的付出和关爱，愿您永远健康快乐！🎂',
+      '亲爱的' + name + '，祝您生日快乐！您的爱是我最大的财富，愿岁月温柔待您！💝',
+      name + '，生日快乐！愿您每天都开心，身体健康，万事如意！🌹',
+      '世界上最好的' + name + '，生日快乐！感谢您的养育之恩，我爱您！❤️'
+    ],
+    '父亲': [
+      name + '，生日快乐！您是我永远的榜样，祝您身体健康，笑口常开！🎂',
+      '亲爱的' + name + '，感谢您的养育之恩，祝您生日快乐，福寿安康！🎉',
+      name + '，生日快乐！愿您事业顺利，身体健康，每天都精彩！💪',
+      '最敬爱的' + name + '，生日快乐！儿子/女儿永远爱您！❤️'
+    ],
+    '配偶': [
+      '亲爱的' + name + '，生日快乐！有你陪伴的每一天都是最好的礼物！❤️',
+      name + '，生日快乐！愿我们的爱情永远甜蜜，一起走过每一个春夏秋冬！💑',
+      '生日快乐，我的爱人！感谢你让我的生命如此完整！🎂💝',
+      name + '，又长大一岁啦！希望新的一年里，我能让你更幸福！🌟'
+    ],
+    '孩子': [
+      '宝贝' + name + '，生日快乐！愿你健康成长，永远快乐！🎂🎈',
+      '生日快乐，我的小天使！愿你的每一天都充满阳光和欢笑！🌟',
+      name + '，生日快乐！爸爸妈妈永远爱你，愿你梦想成真！💝',
+      '亲爱的' + name + '，又长大一岁啦！愿你的未来无限精彩！🎉'
+    ],
+    '兄弟姐妹': [
+      name + '，生日快乐！有你这个兄弟/姐妹真好，愿我们永远相亲相爱！👫',
+      '亲爱的' + name + '，生日快乐！愿你前程似锦，万事胜意！🎂',
+      name + '，生日快乐！感谢一路相伴，愿友谊（亲情）长存！🥂'
+    ],
+    '挚友': [
+      name + '，生日快乐！愿你的每一天都精彩纷呈，友谊长存！🎉',
+      '老友' + name + '，生日快乐！感谢一路有你，愿我们友谊地久天长！🥂',
+      name + '，生日快乐！愿你所求皆如愿，所行化坦途！🌟',
+      '生日快乐' + name + '！希望新的一年里，我们能有更多美好的回忆！💝'
+    ],
+    '同事': [
+      name + '，生日快乐！工作顺利，步步高升！🎂',
+      '祝' + name + '生日快乐！感谢工作中的帮助与支持，愿一切顺利！💼',
+      name + '，生日快乐！愿你在新的一年里事业有成，幸福美满！🎉'
+    ],
+    '其他': [
+      name + '，生日快乐！愿你每天都充满阳光和欢笑！🎂',
+      '祝' + name + '生日快乐！愿所有美好如期而至！🌟',
+      name + '，生日快乐！愿你心想事成，万事如意！💝'
+    ]
+  };
+  return templates[relation] || templates['其他'];
+}
+
+// ===== RENDER =====
+function renderAll() {
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  const year = now.getFullYear().toString();
+  
+  // Stats
+  document.getElementById('statTotal').textContent = appData.people.length;
+  
+  let upcoming30 = 0;
+  let celebratedCount = 0;
+  appData.people.forEach(p => {
+    const days = getDaysUntil(p.birthday);
+    if (days <= 30) upcoming30++;
+    if (p.celebrations && p.celebrations[year]) celebratedCount++;
+  });
+  document.getElementById('statUpcoming').textContent = upcoming30;
+  document.getElementById('statCelebrated').textContent = celebratedCount;
+  
+  // Sort people by next birthday proximity
+  const sorted = [...appData.people].sort((a,b) => getDaysUntil(a.birthday) - getDaysUntil(b.birthday));
+  
+  // Render upcoming (within 30 days)
+  const upcomingContainer = document.getElementById('upcomingGrid');
+  const upcomingPeople = sorted.filter(p => getDaysUntil(p.birthday) <= 30);
+  
+  if (upcomingPeople.length === 0) {
+    upcomingContainer.innerHTML = appData.people.length === 0
+      ? '<div class="empty-state"><div class="empty-icon">📅</div><p>点击上方按钮添加重要的人吧~</p></div>'
+      : '<div class="empty-state"><div class="empty-icon">📅</div><p>30天内没有生日，一切安好~</p></div>';
+  } else {
+    upcomingContainer.innerHTML = upcomingPeople.map(p => renderPersonCard(p, year)).join('');
+  }
+  
+  // Render all people
+  const allContainer = document.getElementById('allPeopleGrid');
+  if (appData.people.length === 0) {
+    allContainer.innerHTML = '<div class="empty-state"><div class="empty-icon">💝</div><p>还没有添加任何人呢</p><p style="font-size:13px;color:var(--text-light);">点击上方按钮，把重要的人的生日记下来吧~</p><button class="btn btn-primary" onclick="openAddModal()">➕ 添加第一个</button></div>';
+  } else {
+    allContainer.innerHTML = sorted.map(p => renderPersonCard(p, year)).join('');
+  }
+  
+  // Render history
+  renderHistory();
+  
+  // Render reminder banner
+  renderReminderBanner(sorted);
+}
+
+function renderPersonCard(person, year) {
+  const days = getDaysUntil(person.birthday);
+  const age = getAge(person.birthday);
+  const nextBday = getNextBirthday(person.birthday);
+  const dateStr = nextBday.getFullYear() + '年' + (nextBday.getMonth()+1) + '月' + nextBday.getDate() + '日';
+  const celebrated = person.celebrations && person.celebrations[year];
+  const isToday = days === 0;
+  
+  let countdownClass = 'far';
+  let countdownText = '还有 ' + days + ' 天';
+  if (days === 0) { countdownClass = 'urgent'; countdownText = '🎂 就是今天！'; }
+  else if (days === 1) { countdownClass = 'urgent'; countdownText = '⚠️ 就是明天！'; }
+  else if (days <= 7) { countdownClass = 'soon'; countdownText = '还有 ' + days + ' 天'; }
+  else if (days <= 30) { countdownClass = 'normal'; countdownText = '还有 ' + days + ' 天'; }
+  
+  const cardClass = (isToday && !celebrated) ? 'person-card today-highlight' : (celebrated ? 'person-card celebrated' : 'person-card');
+  
+  let heartHtml = '';
+  if (isToday) {
+    if (celebrated) {
+      heartHtml = '<div class="heart-btn done"><span>💝</span> 已送祝福 ✅</div>';
+    } else {
+      heartHtml = '<div class="heart-btn" onclick="event.stopPropagation();handleCelebrate(\'' + person.id + '\')"><span class="heart-icon">❤️</span> 送上祝福</div>';
+    }
+  }
+  
+  const avatarClass = getRelationAvatarClass(person.relation);
+  const emoji = getRelationEmoji(person.relation);
+  const notesHtml = person.notes ? '<div class="notes">💬 ' + escapeHtml(person.notes) + '</div>' : '';
+  
+  return `
+    <div class="${cardClass}" onclick="openWishesModal('${person.id}')" style="cursor:pointer;">
+      <div class="card-header">
+        <div style="display:flex;align-items:center;">
+          <div class="avatar ${avatarClass}">${emoji}</div>
+          <span class="person-name">${escapeHtml(person.name)}</span>
+          <span class="person-rel">${escapeHtml(person.relation)}</span>
+        </div>
+        <div class="card-actions">
+          <button title="编辑" onclick="event.stopPropagation();openEditModal('${person.id}')">✏️</button>
+          <button title="删除" class="danger" onclick="event.stopPropagation();deletePerson('${person.id}')">🗑️</button>
+        </div>
+      </div>
+      <div class="birthday-info">
+        📅 下次生日：${dateStr}（${age}岁）<br>
+        <span class="countdown ${countdownClass}">${countdownText}</span>
+      </div>
+      ${notesHtml}
+      ${heartHtml}
+    </div>
+  `;
+}
+
+function renderHistory() {
+  const year = new Date().getFullYear().toString();
+  const historyContainer = document.getElementById('historyList');
+  const celebrated = appData.people.filter(p => p.celebrations && p.celebrations[year]);
+  
+  if (celebrated.length === 0) {
+    historyContainer.innerHTML = '<div class="empty-state" style="padding:30px;"><p style="color:var(--text-light);">今年还没有送出祝福哦~</p></div>';
+  } else {
+    historyContainer.innerHTML = celebrated.map(p => {
+      const emoji = getRelationEmoji(p.relation);
+      return '<div class="history-item"><span class="check-icon">✅</span>' + emoji + ' <strong>' + escapeHtml(p.name) + '</strong>（' + escapeHtml(p.relation) + '）— 已送出祝福 💝</div>';
+    }).join('');
+  }
+}
+
+function renderReminderBanner(sorted) {
+  const banner = document.getElementById('reminderBanner');
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  
+  // Check for today's birthdays
+  const todayPeople = sorted.filter(p => getDaysUntil(p.birthday) === 0);
+  const uncelebratedToday = todayPeople.filter(p => {
+    const year = today.getFullYear().toString();
+    return !(p.celebrations && p.celebrations[year]);
+  });
+  
+  if (uncelebratedToday.length > 0) {
+    const names = uncelebratedToday.map(p => p.name).join('、');
+    banner.className = 'reminder-banner today show';
+    banner.innerHTML = '🎂 <strong>今天是 ' + escapeHtml(names) + ' 的生日！</strong>快送上你的祝福吧！点击卡片上的 ❤️ 标记已完成~';
+    return;
+  }
+  
+  // Check for tomorrow
+  const tomorrowPeople = sorted.filter(p => getDaysUntil(p.birthday) === 1);
+  if (tomorrowPeople.length > 0) {
+    const names = tomorrowPeople.map(p => p.name).join('、');
+    banner.className = 'reminder-banner tomorrow show';
+    banner.innerHTML = '🔔 <strong>明天就是 ' + escapeHtml(names) + ' 的生日了！</strong>别忘了准备礼物和祝福哦~';
+    return;
+  }
+  
+  // Check for 7 days
+  const weekPeople = sorted.filter(p => {
+    const d = getDaysUntil(p.birthday);
+    return d >= 2 && d <= 7;
+  });
+  if (weekPeople.length > 0) {
+    const names = weekPeople.map(p => p.name + '(' + getDaysUntil(p.birthday) + '天后)').join('、');
+    banner.className = 'reminder-banner week show';
+    banner.innerHTML = '📅 <strong>未来一周内：</strong>' + escapeHtml(names) + ' — 该准备礼物啦！';
+    return;
+  }
+  
+  banner.className = 'reminder-banner';
+  banner.innerHTML = '';
+}
+
+// ===== ACTIONS =====
+function handleCelebrate(personId) {
+  celebrateBirthday(personId);
+  showConfetti();
+  
+  // Show a sweet message
+  const person = appData.people.find(p => p.id === personId);
+  if (person && 'Notification' in window && Notification.permission === 'granted') {
+    new Notification('💝 祝福已送达', { body: '已为 ' + person.name + ' 送上生日祝福！' });
+  }
+}
+
+function deletePerson(personId) {
+  const person = appData.people.find(p => p.id === personId);
+  if (!person) return;
+  if (!confirm('确定要删除 ' + person.name + ' 吗？此操作不可恢复。')) return;
+  appData.people = appData.people.filter(p => p.id !== personId);
+  saveData();
+  renderAll();
+}
+
+// ===== MODAL =====
+let editingId = null;
+
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = '➕ 添加重要的人';
+  document.getElementById('btnSave').textContent = '💾 保存';
+  document.getElementById('inputName').value = '';
+  document.getElementById('inputRelation').value = '';
+  document.getElementById('inputBirthday').value = '';
+  document.getElementById('inputNotes').value = '';
+  document.getElementById('personModal').classList.add('show');
+  document.getElementById('inputName').focus();
+}
+
+function openEditModal(personId) {
+  const person = appData.people.find(p => p.id === personId);
+  if (!person) return;
+  editingId = personId;
+  document.getElementById('modalTitle').textContent = '✏️ 编辑信息';
+  document.getElementById('btnSave').textContent = '💾 更新';
+  document.getElementById('inputName').value = person.name;
+  document.getElementById('inputRelation').value = person.relation;
+  document.getElementById('inputBirthday').value = person.birthday;
+  document.getElementById('inputNotes').value = person.notes || '';
+  document.getElementById('personModal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('personModal').classList.remove('show');
+  editingId = null;
+}
+
+function savePerson() {
+  const name = document.getElementById('inputName').value.trim();
+  const relation = document.getElementById('inputRelation').value;
+  const birthday = document.getElementById('inputBirthday').value;
+  const notes = document.getElementById('inputNotes').value.trim();
+  
+  if (!name) { alert('请输入姓名'); return; }
+  if (!relation) { alert('请选择关系'); return; }
+  if (!birthday) { alert('请选择生日'); return; }
+  
+  if (editingId) {
+    const person = appData.people.find(p => p.id === editingId);
+    if (person) {
+      person.name = name;
+      person.relation = relation;
+      person.birthday = birthday;
+      person.notes = notes;
+    }
+  } else {
+    appData.people.push({
+      id: 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2,5),
+      name: name,
+      relation: relation,
+      birthday: birthday,
+      notes: notes,
+      celebrations: {}
+    });
+  }
+  
+  saveData();
+  closeModal();
+  renderAll();
+}
+
+// ===== WISHES MODAL =====
+let wishesPersonId = null;
+
+function openWishesModal(personId) {
+  const person = appData.people.find(p => p.id === personId);
+  if (!person) return;
+  wishesPersonId = personId;
+  
+  document.getElementById('wishesTitle').textContent = '💌 ' + person.name + ' 的生日祝福';
+  
+  // Gift suggestions
+  const gifts = getGiftSuggestions(person.relation);
+  document.getElementById('giftTags').innerHTML = gifts.map((g,i) => 
+    '<span class="gift-tag' + (i < 4 ? ' suggested' : '') + '">🎁 ' + escapeHtml(g) + '</span>'
+  ).join('');
+  
+  // Wishes
+  const wishes = getWishes(person.name, person.relation);
+  document.getElementById('wishesContent').innerHTML = wishes.map((w,i) => 
+    '<div class="wish-card"><div class="wish-text">' + escapeHtml(w) + '</div><button class="copy-btn" onclick="copyWish(\'' + person.id + '\', ' + i + ')">📋 复制</button></div>'
+  ).join('');
+  
+  document.getElementById('wishesModal').classList.add('show');
+}
+
+function closeWishesModal() {
+  document.getElementById('wishesModal').classList.remove('show');
+  wishesPersonId = null;
+}
+
+function copyWish(personId, index) {
+  const person = appData.people.find(p => p.id === personId);
+  if (!person) return;
+  const wishes = getWishes(person.name, person.relation);
+  if (index >= 0 && index < wishes.length) {
+    navigator.clipboard.writeText(wishes[index]).then(() => {
+      // Brief feedback
+      const btns = document.querySelectorAll('#wishesContent .copy-btn');
+      if (btns[index]) {
+        const orig = btns[index].textContent;
+        btns[index].textContent = '✅ 已复制';
+        btns[index].style.background = '#4CAF50';
+        setTimeout(() => {
+          btns[index].textContent = orig;
+          btns[index].style.background = '';
+        }, 1500);
+      }
+    }).catch(() => {
+      alert('复制失败，请手动复制');
+    });
+  }
+}
+
+// ===== CONFETTI =====
+function showConfetti() {
+  const container = document.getElementById('confettiContainer');
+  const colors = ['#E84B37','#FF6B6B','#FFB300','#FFD54F','#4CAF50','#42A5F5','#AB47BC','#FF7043'];
+  
+  for (let i = 0; i < 60; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.animationDuration = (2 + Math.random() * 3) + 's';
+    piece.style.animationDelay = Math.random() * 0.8 + 's';
+    piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+    piece.style.width = (8 + Math.random() * 12) + 'px';
+    piece.style.height = (8 + Math.random() * 12) + 'px';
+    container.appendChild(piece);
+  }
+  
+  setTimeout(() => {
+    container.innerHTML = '';
+  }, 4000);
+}
+
+// ===== NOTIFICATIONS =====
+function enableNotifications() {
+  if (!('Notification' in window)) {
+    alert('您的浏览器不支持桌面通知功能');
+    return;
+  }
+  
+  if (Notification.permission === 'granted') {
+    appData.settings.notificationsEnabled = true;
+    saveData();
+    alert('✅ 浏览器提醒已开启！当您在生日前打开本工具时，会收到醒目提醒。');
+    // Also trigger a test notification
+    new Notification('🎂 生日快乐提醒', { body: '提醒功能已就绪！生日前7天和1天会提醒您~' });
+    return;
+  }
+  
+  Notification.requestPermission().then(permission => {
+    if (permission === 'granted') {
+      appData.settings.notificationsEnabled = true;
+      saveData();
+      alert('✅ 浏览器提醒已开启！');
+      new Notification('🎂 生日快乐提醒', { body: '提醒功能已就绪！生日前7天和1天会提醒您~' });
+    } else {
+      alert('⚠️ 您拒绝了通知权限。提醒功能将只在页面内显示。');
+    }
+  });
+}
+
+// ===== IMPORT/EXPORT =====
+function exportData() {
+  const json = JSON.stringify(appData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '生日提醒数据备份_' + getTodayStr() + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.people || !Array.isArray(data.people)) {
+        throw new Error('数据格式不正确');
+      }
+      if (!confirm('将导入 ' + data.people.length + ' 条生日记录，会覆盖当前数据，确定继续吗？')) return;
+      appData = data;
+      if (!appData.settings) appData.settings = getDefaultData().settings;
+      saveData();
+      renderAll();
+      alert('✅ 数据导入成功！');
+    } catch(err) {
+      alert('❌ 导入失败：' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ===== DEMO DATA =====
+function loadDemoData() {
+  if (appData.people.length > 0) {
+    if (!confirm('加载示例数据会覆盖当前数据，确定继续吗？')) return;
+  }
+  appData = {
+    people: [
+      { id: 'demo1', name: '妈妈', relation: '母亲', birthday: '1965-03-15', notes: '喜欢百合花，爱喝红茶', celebrations: {} },
+      { id: 'demo2', name: '爸爸', relation: '父亲', birthday: '1963-08-22', notes: '喜欢钓鱼和喝茶', celebrations: {} },
+      { id: 'demo3', name: '小明', relation: '孩子', birthday: '2018-06-10', notes: '喜欢恐龙玩具和乐高', celebrations: {} },
+      { id: 'demo4', name: '小丽', relation: '挚友', birthday: '1992-11-05', notes: '喜欢香水和文创', celebrations: {} },
+      { id: 'demo5', name: '老王', relation: '同事', birthday: '1988-04-18', notes: '喜欢喝咖啡', celebrations: {} }
+    ],
+    settings: getDefaultData().settings
+  };
+  saveData();
+  renderAll();
+}
+
+// ===== ESCAPE HTML =====
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ===== CLOSE MODALS ON OVERLAY CLICK =====
+document.getElementById('personModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+document.getElementById('wishesModal').addEventListener('click', function(e) {
+  if (e.target === this) closeWishesModal();
+});
+
+// ===== KEYBOARD SHORTCUTS =====
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeModal();
+    closeWishesModal();
+  }
+});
+
+// ===== INIT =====
+renderAll();
+
+// Show initial notification hint
+setTimeout(() => {
+  if ('Notification' in window && Notification.permission === 'default') {
+    const banner = document.getElementById('reminderBanner');
+    if (!banner.classList.contains('show')) {
+      banner.className = 'reminder-banner week show';
+      banner.innerHTML = '💡 点击上方「🔔 开启浏览器提醒」按钮，在生日临近时获得桌面通知提醒~';
+    }
+  }
+}, 1000);
+
+console.log('🎂 生日快乐提醒小工具已就绪！');
+console.log('💾 数据存储在浏览器 localStorage 中');
+console.log('📥 请定期使用「导出数据」功能备份');
+</script>
+
+</body>
+</html>
