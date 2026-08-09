@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>产值核算工具 v3.2</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --primary: #E84B37;
+  --primary-dark: #C4392A;
+  --primary-light: #FDE8E5;
+  --primary-tint: #FDF1EE;
+  --header: #1E2A38;
+  --header-light: #2C3E50;
+  --accent: #0984E3;
+  --accent-light: #EBF5FF;
+  --bg: #F5F7FB;
+  --card-bg: #FFFFFF;
+  --border: #EBEEF3;
+  --border-dark: #E2E8F0;
+  --text: #1A202C;
+  --text-secondary: #64748B;
+  --text-light: #94A3B8;
+  --success: #00B894;
+  --success-light: #E6F9F4;
+  --warning: #F59E0B;
+  --warning-light: #FEF3C7;
+  --info: #3182CE;
+  --info-light: #EBF5FF;
+  --purple: #8B5CF6;
+  --purple-light: #F3E8FF;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow: 0 2px 8px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 8px 32px rgba(15, 23, 42, 0.10), 0 4px 8px rgba(15, 23, 42, 0.04);
+  --shadow-xl: 0 16px 48px rgba(15, 23, 42, 0.12);
+  --gradient-primary: linear-gradient(135deg, #E84B37 0%, #F06A56 50%, #E84B37 100%);
+  --gradient-card: linear-gradient(180deg, #FFFFFF 0%, #FAFBFC 100%);
+  --gradient-bg: linear-gradient(180deg, #F5F7FB 0%, #ECEFF5 100%);
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;
+  background:var(--gradient-bg);
+  background-attachment:fixed;
+  color:var(--text);
+  line-height:1.6;
+  font-size:14px;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+.app{max-width:1400px;margin:0 auto;padding:24px 20px}
+
+/* === 头部 === */
+.header{
+  background:var(--gradient-primary);
+  border-radius:var(--radius-xl);
+  padding:32px 36px;
+  margin-bottom:24px;
+  box-shadow:var(--shadow-lg),0 0 0 1px rgba(232,75,55,0.08);
+  color:#fff;
+  position:relative;
+  overflow:hidden;
+}
+.header::before{
+  content:'';
+  position:absolute;
+  top:-50%;right:-10%;
+  width:400px;height:400px;
+  background:radial-gradient(circle,rgba(255,255,255,0.15) 0%,transparent 70%);
+  pointer-events:none;
+}
+.header::after{
+  content:'';
+  position:absolute;
+  bottom:-30%;left:-5%;
+  width:300px;height:300px;
+  background:radial-gradient(circle,rgba(255,255,255,0.08) 0%,transparent 70%);
+  pointer-events:none;
+}
+.header>*{position:relative;z-index:1}
+.header h1{
+  font-size:28px;
+  font-weight:700;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  letter-spacing:0.5px;
+  margin-bottom:8px;
+}
+.header h1 .badge{
+  background:rgba(255,255,255,0.25);
+  color:#fff;
+  font-size:12px;
+  padding:4px 12px;
+  border-radius:20px;
+  font-weight:600;
+  backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,0.2);
+}
+.header p.subtitle{
+  color:rgba(255,255,255,0.92);
+  font-size:14px;
+  margin-bottom:20px;
+  letter-spacing:0.3px;
+}
+
+/* === 按钮 === */
+.btn-action{
+  padding:10px 22px;
+  border:none;
+  border-radius:10px;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all .25s cubic-bezier(0.4,0,0.2,1);
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  letter-spacing:0.3px;
+}
+.btn-action.primary{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(232,75,55,0.3)}
+.btn-action.primary:hover{background:var(--primary-dark);transform:translateY(-1px);box-shadow:0 4px 12px rgba(232,75,55,0.4)}
+.btn-action.accent{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(9,132,227,0.3)}
+.btn-action.accent:hover{background:#0770C0;transform:translateY(-1px);box-shadow:0 4px 12px rgba(9,132,227,0.4)}
+.btn-action.success{background:var(--success);color:#fff;box-shadow:0 2px 8px rgba(0,184,148,0.3)}
+.btn-action.success:hover{background:#009B7F;transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,184,148,0.4)}
+.btn-action.warning{background:var(--warning);color:#fff;box-shadow:0 2px 8px rgba(245,158,11,0.3)}
+.btn-action.warning:hover{background:#D97706;transform:translateY(-1px);box-shadow:0 4px 12px rgba(245,158,11,0.4)}
+.btn-action.info{background:var(--info);color:#fff;box-shadow:0 2px 8px rgba(49,130,206,0.3)}
+.btn-action.info:hover{background:#2C5282;transform:translateY(-1px);box-shadow:0 4px 12px rgba(49,130,206,0.4)}
+.btn-action.outline{background:#fff;color:var(--primary);border:2px solid var(--primary)}
+.btn-action.outline:hover{background:var(--primary-light);transform:translateY(-1px)}
+
+.header .actions{display:flex;gap:10px;flex-wrap:wrap}
+/* 头部按钮：每个用不同色彩更清晰 */
+.header .btn-action.primary{
+  background:#fff;color:var(--primary);border:2px solid #fff;
+  box-shadow:0 4px 16px rgba(0,0,0,0.1);
+}
+.header .btn-action.primary:hover{background:var(--primary-tint);border-color:var(--primary-tint);transform:translateY(-2px);box-shadow:0 6px 20px rgba(232,75,55,0.25)}
+.header .btn-action.success{
+  background:var(--success);color:#fff;border:2px solid var(--success);
+  box-shadow:0 4px 16px rgba(0,184,148,0.35);
+}
+.header .btn-action.success:hover{background:#009B7F;border-color:#009B7F;transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,184,148,0.45)}
+.header .btn-action.info{
+  background:var(--info);color:#fff;border:2px solid var(--info);
+  box-shadow:0 4px 16px rgba(49,130,206,0.35);
+}
+.header .btn-action.info:hover{background:#2C5282;border-color:#2C5282;transform:translateY(-2px);box-shadow:0 6px 20px rgba(49,130,206,0.45)}
+.header .btn-action.warning{
+  background:#fff;color:var(--warning);border:2px solid #fff;
+  box-shadow:0 4px 16px rgba(245,158,11,0.25);
+}
+.header .btn-action.warning:hover{background:#FEF3C7;border-color:#FEF3C7;transform:translateY(-2px);box-shadow:0 6px 20px rgba(245,158,11,0.35)}
+.header .btn-action.accent{
+  background:rgba(255,255,255,0.18);color:#fff;border:2px solid rgba(255,255,255,0.5);
+  backdrop-filter:blur(10px);
+}
+.header .btn-action.accent:hover{background:rgba(255,255,255,0.3);border-color:#fff;transform:translateY(-2px)}
+
+.help-panel{
+  margin-top:18px;
+  background:rgba(255,255,255,0.95);
+  border-left:4px solid var(--accent);
+  border-radius:0 10px 10px 0;
+  padding:14px 18px;
+  font-size:13px;
+  color:#2B6CB0;
+  display:none;
+  backdrop-filter:blur(10px);
+  box-shadow:0 4px 16px rgba(0,0,0,0.08);
+}
+.help-panel.show{display:block}
+
+/* === 卡片 === */
+.card{
+  background:var(--card-bg);
+  border-radius:var(--radius-lg);
+  padding:24px 28px;
+  margin-bottom:20px;
+  box-shadow:var(--shadow);
+  border:1px solid var(--border);
+  transition:box-shadow .25s;
+}
+.card:hover{box-shadow:var(--shadow-md)}
+.card h2{
+  font-size:18px;
+  font-weight:700;
+  color:var(--header);
+  margin-bottom:18px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  letter-spacing:0.3px;
+}
+.card h2 .num{
+  background:var(--gradient-primary);
+  color:#fff;
+  width:28px;height:28px;
+  border-radius:8px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  font-weight:700;
+  box-shadow:0 2px 8px rgba(232,75,55,0.3);
+}
+.card h3{
+  font-size:14px;
+  font-weight:600;
+  color:var(--header);
+  margin:18px 0 10px;
+  padding-bottom:8px;
+  border-bottom:1px dashed var(--border-dark);
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.card h3:first-child{margin-top:4px}
+.card h3::before{
+  content:'';
+  width:4px;height:14px;
+  background:var(--primary);
+  border-radius:2px;
+}
+.card.hidden{display:none}
+
+/* === 上传区 === */
+.upload-grid{display:grid;grid-template-columns:repeat(3, 1fr);gap:16px;margin-bottom:8px}
+.upload-card{
+  background:linear-gradient(180deg,#FFFFFF 0%,#FAFBFC 100%);
+  border:2px dashed var(--border-dark);
+  border-radius:var(--radius-lg);
+  padding:32px 20px;
+  text-align:center;
+  cursor:pointer;
+  transition:all .3s cubic-bezier(0.4,0,0.2,1);
+  position:relative;
+  overflow:hidden;
+}
+.upload-card::before{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;
+  height:3px;
+  background:linear-gradient(90deg,transparent 0%,var(--primary) 50%,transparent 100%);
+  opacity:0;
+  transition:opacity .3s;
+}
+.upload-card:hover{
+  border-color:var(--primary);
+  background:linear-gradient(180deg,#FFFFFF 0%,var(--primary-tint) 100%);
+  transform:translateY(-3px);
+  box-shadow:var(--shadow-lg);
+}
+.upload-card:hover::before{opacity:1}
+.upload-card.loaded{
+  border-style:solid;
+  border-color:var(--success);
+  background:linear-gradient(180deg,#FFFFFF 0%,var(--success-light) 100%);
+  box-shadow:0 4px 16px rgba(0,184,148,0.15);
+}
+.upload-card .icon{
+  width:56px;height:56px;
+  margin:0 auto 14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:linear-gradient(135deg,var(--primary-tint) 0%,#fff 100%);
+  border-radius:16px;
+  box-shadow:0 4px 12px rgba(232,75,55,0.08);
+  transition:transform .3s;
+}
+.upload-card:hover .icon{transform:scale(1.08) rotate(-3deg)}
+.upload-card.loaded .icon{background:linear-gradient(135deg,var(--success-light) 0%,#fff 100%);box-shadow:0 4px 12px rgba(0,184,148,0.15)}
+.upload-card .icon svg{width:30px;height:30px;stroke:var(--primary);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.upload-card .icon svg.filled{fill:var(--primary);fill-opacity:0.1}
+.upload-card.loaded .icon svg{stroke:var(--success)}
+.upload-card .name{font-size:15px;font-weight:600;color:var(--header);margin-bottom:6px;letter-spacing:0.3px}
+.upload-card .name .req{
+  color:var(--primary);
+  font-size:11px;
+  background:var(--primary-tint);
+  padding:2px 8px;
+  border-radius:10px;
+  margin-left:4px;
+  font-weight:600;
+}
+.upload-card .hint{font-size:12px;color:var(--text-secondary);line-height:1.7}
+.upload-card .tpl-link{color:var(--accent);cursor:pointer;font-weight:500;text-decoration:none;margin-left:4px;display:inline-block}
+.upload-card .tpl-link:hover{text-decoration:underline}
+.upload-card .info{
+  display:none;
+  margin-top:10px;
+  font-size:12px;
+  color:var(--success);
+  font-weight:500;
+  padding:6px 12px;
+  background:rgba(0,184,148,0.08);
+  border-radius:8px;
+}
+.upload-card.loaded .info{display:inline-block}
+.upload-card input[type=file]{display:none}
+
+/* === 字段映射 === */
+.mapping-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
+.mapping-grid h4{
+  margin-bottom:12px;
+  font-size:13px;
+  font-weight:600;
+  padding:8px 12px;
+  border-radius:8px;
+  background:linear-gradient(135deg,var(--info-light) 0%,#fff 100%);
+}
+.c1{color:#3182CE}.c2{color:#E84B37}.c3{color:#D69E2E}
+.mapping-grid h4.c1{background:linear-gradient(135deg,#EBF5FF 0%,#fff 100%)}
+.mapping-grid h4.c2{background:linear-gradient(135deg,#FDE8E5 0%,#fff 100%)}
+.mapping-grid h4.c3{background:linear-gradient(135deg,#FEF3C7 0%,#fff 100%)}
+.mapping-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.mapping-row label{font-size:12px;width:95px;flex-shrink:0;color:var(--text);font-weight:500}
+.mapping-row select{
+  flex:1;
+  padding:8px 10px;
+  border:1px solid var(--border-dark);
+  border-radius:8px;
+  font-size:12px;
+  background:#fff;
+  cursor:pointer;
+  transition:border-color .2s;
+}
+.mapping-row select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(232,75,55,0.1)}
+.mapping-panel{display:none}
+.mapping-panel.show{display:block}
+
+/* === 表格 === */
+.table-wrapper{
+  overflow-x:auto;
+  max-height:500px;
+  overflow-y:auto;
+  border-radius:var(--radius);
+  border:1px solid var(--border);
+  background:#fff;
+}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+table th{
+  background:linear-gradient(180deg,var(--header) 0%,#243342 100%);
+  color:#fff;
+  padding:12px 14px;
+  text-align:left;
+  font-weight:600;
+  white-space:nowrap;
+  position:sticky;
+  top:0;
+  z-index:1;
+  letter-spacing:0.3px;
+  border:none;
+}
+table td{padding:10px 14px;border-bottom:1px solid var(--border)}
+table tbody tr{transition:background .15s}
+table tbody tr:hover{background:linear-gradient(90deg,#F7FAFC 0%,#FFF5F3 100%)}
+table tbody tr.total-row{background:linear-gradient(90deg,var(--primary-tint) 0%,#FFF5F3 100%);font-weight:700}
+table tbody tr.total-row td:last-child{color:var(--primary)}
+
+/* === 标签 === */
+.tag{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap;letter-spacing:0.3px}
+.tag-current{background:linear-gradient(135deg,#C6F6D5 0%,#9AE6B4 100%);color:#276749}
+.tag-backtrack{background:linear-gradient(135deg,#FEF3C7 0%,#FDE68A 100%);color:#975A16}
+.tag-new{background:linear-gradient(135deg,#E9D8FD 0%,#C4B5FD 100%);color:#6B46C1}
+
+/* === 摘要卡片 === */
+.summary-grid{display:grid;grid-template-columns:repeat(4, 1fr);gap:14px;margin:18px 0}
+.summary-item{
+  background:var(--gradient-card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:20px 16px;
+  text-align:center;
+  transition:all .25s;
+  position:relative;
+  overflow:hidden;
+}
+.summary-item::before{
+  content:'';
+  position:absolute;
+  top:0;left:0;
+  width:4px;height:100%;
+  background:var(--primary);
+  transition:width .25s;
+}
+.summary-item:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.summary-item:hover::before{width:6px}
+.summary-item .val{font-size:26px;font-weight:700;letter-spacing:0.5px}
+.summary-item .lbl{font-size:12px;color:var(--text-secondary);margin-top:4px;font-weight:500}
+.val.primary{color:var(--primary)}.val.success{color:var(--success)}.val.warning{color:var(--warning)}
+.val.info{color:var(--info)}.val.purple{color:var(--purple)}.val.up{color:var(--primary)}.val.down{color:var(--success)}
+
+/* === Tab === */
+.tabs{display:flex;gap:0;margin:0 0 0;padding:0 4px;border-bottom:2px solid var(--border);overflow-x:auto;flex-wrap:nowrap}
+.tab{
+  padding:11px 22px;
+  border:none;
+  background:none;
+  font-size:13.5px;
+  font-weight:600;
+  color:var(--text-secondary);
+  cursor:pointer;
+  border-bottom:3px solid transparent;
+  margin-bottom:-2px;
+  transition:all .2s;
+  white-space:nowrap;
+  border-radius:8px 8px 0 0;
+  position:relative;
+}
+.tab:hover{color:var(--header);background:rgba(232,75,55,0.04)}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary);background:linear-gradient(180deg,rgba(232,75,55,0.06) 0%,transparent 100%)}
+.tab-content{display:none;padding-top:18px}.tab-content.active{display:block;animation:fadeIn .3s ease-out}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* === 操作栏 === */
+.action-bar{display:flex;gap:12px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+
+/* === 产品管理 === */
+.prod-mgmt input[type=checkbox]{margin-right:6px;transform:scale(1.2);accent-color:var(--primary);cursor:pointer}
+.prod-mgmt input[type=number]{
+  width:100px;
+  padding:6px 10px;
+  border:1px solid var(--border-dark);
+  border-radius:8px;
+  font-size:12px;
+  text-align:right;
+  transition:border-color .2s;
+}
+.prod-mgmt input[type=number]:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(232,75,55,0.1)}
+
+/* === 日志 === */
+.log-area{
+  background:linear-gradient(180deg,#1A202C 0%,#0F172A 100%);
+  color:#a0aec0;
+  border-radius:var(--radius);
+  padding:14px 18px;
+  font-family:"SF Mono","Consolas","Courier New",monospace;
+  font-size:12px;
+  max-height:200px;
+  overflow-y:auto;
+  line-height:1.8;
+  box-shadow:inset 0 2px 8px rgba(0,0,0,0.2);
+}
+.log-info{color:#60A5FA}.log-warn{color:#FCD34D}.log-error{color:#F87171}.log-ok{color:#34D399}
+
+/* === 同比表格 === */
+.compare-table td{border-right:1px solid var(--border)}
+.compare-table td:last-child{border-right:none}
+
+/* === 页脚 === */
+.footer{
+  text-align:center;
+  padding:20px;
+  font-size:12px;
+  color:var(--text-secondary);
+  margin-top:24px;
+  letter-spacing:0.5px;
+}
+.footer::before{
+  content:'— ';
+  color:var(--primary);
+  font-weight:bold;
+}
+
+@media(max-width:900px){
+  .upload-grid,.summary-grid,.mapping-grid{grid-template-columns:1fr 1fr}
+  .header h1{font-size:22px}
+  .header{padding:24px 20px}
+}
+@media(max-width:600px){
+  .upload-grid,.summary-grid,.mapping-grid{grid-template-columns:1fr}
+  .card{padding:18px 16px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- 头部 -->
+<div class="header">
+  <h1>产值核算工具 <span class="badge">v3.2</span></h1>
+  <p class="subtitle">收发存库存 · 产值/销售产值/新产品产值 · 月度累计同比 · 销售单价档案按月归拢</p>
+  <div class="actions">
+    <button class="btn-action success" onclick="exportArchive()">📋 导出价格档案</button>
+    <button class="btn-action info" onclick="document.getElementById('fileImportArchive').click()">📤 导入价格档案</button>
+    <input type="file" id="fileImportArchive" accept=".xlsx,.xls" onchange="importArchive(this)" style="display:none">
+    <button class="btn-action warning" onclick="resetAll()">🔄 重置</button>
+    <button class="btn-action primary" onclick="exportResult()">📥 导出全部报表</button>
+    <button class="btn-action accent" onclick="document.getElementById('helpMain').classList.toggle('show')">💡 使用帮助</button>
+  </div>
+  <div class="help-panel" id="helpMain">
+    <b>使用流程：</b>1) 上传3个Excel（入库/发票/销售出库）→ 2) 确认字段映射 → 3) 勾选新产品、设置期初库存 → 4) 查看下方6张报表与同比对比。<br>
+    <b>价格回溯：</b>当月无销售时，自动用最近历史月份的不含税均价。每月下载发票导入，数据自动归拢到价格档案。<br>
+    <b>月度总表：</b>核算后自动保存到本地，明年同月会自动显示同比。
+  </div>
+</div>
+
+<!-- 输入区 -->
+<div class="card">
+  <h2><span class="num">1</span>数据输入</h2>
+
+  <h3>一、上传Excel</h3>
+  <div class="upload-grid">
+    <div class="upload-card" id="cardInbound" onclick="document.getElementById('fileInbound').click()">
+      <div class="icon"><svg viewBox="0 0 24 24" class="filled"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+      <div class="name">产成品入库 <span class="req">必传</span></div>
+      <div class="hint">月份 / 产品名称 / 规格 / 入库数量 <a class="tpl-link" onclick="event.stopPropagation();downloadTemplate('inbound')">📥 下载模版</a></div>
+      <div class="info" id="infoInbound"></div>
+      <input type="file" id="fileInbound" accept=".xlsx,.xls" onchange="handleUpload('inbound',this)">
+    </div>
+    <div class="upload-card" id="cardInvoice" onclick="document.getElementById('fileInvoice').click()">
+      <div class="icon"><svg viewBox="0 0 24 24" class="filled"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg></div>
+      <div class="name">销售发票清单 <span class="req">必传</span></div>
+      <div class="hint">月份 / 产品名称 / 规格 / 数量 / 含税金额 / 税率 <a class="tpl-link" onclick="event.stopPropagation();downloadTemplate('invoice')">📥 下载模版</a></div>
+      <div class="info" id="infoInvoice"></div>
+      <input type="file" id="fileInvoice" accept=".xlsx,.xls" onchange="handleUpload('invoice',this)">
+    </div>
+    <div class="upload-card" id="cardSalesOut" onclick="document.getElementById('fileSalesOut').click()">
+      <div class="icon"><svg viewBox="0 0 24 24" class="filled"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+      <div class="name">销售出库</div>
+      <div class="hint">月份 / 产品名称 / 规格 / 出库数量 <a class="tpl-link" onclick="event.stopPropagation();downloadTemplate('salesOut')">📥 下载模版</a></div>
+      <div class="info" id="infoSalesOut"></div>
+      <input type="file" id="fileSalesOut" accept=".xlsx,.xls" onchange="handleUpload('salesOut',this)">
+    </div>
+  </div>
+
+  <h3>二、字段映射</h3>
+  <div class="mapping-panel" id="mappingPanel">
+    <div class="mapping-grid" id="mappingContent"></div>
+    <div class="action-bar"><button class="btn-action primary" onclick="confirmMapping()">确认映射，开始核算</button></div>
+  </div>
+
+  <h3>三、产品管理（勾选新产品、设置期初库存）</h3>
+  <div id="prodMgmtPanel" style="display:none">
+    <div class="table-wrapper prod-mgmt" id="prodMgmtTable" style="max-height:280px"></div>
+    <p style="font-size:11px;color:var(--text-secondary);margin-top:6px">💡 勾选"新产品"将单独汇总新产品产值；期初库存用于计算期末库存（期末=期初+入库-出库）</p>
+  </div>
+</div>
+
+<!-- 结果区 -->
+<div class="card hidden" id="resultSection">
+  <h2><span class="num">2</span>核算结果</h2>
+
+  <div class="summary-grid" id="summaryCards"></div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('tab-monthly',this)">月度总表&同比</div>
+    <div class="tab" onclick="switchTab('tab-inventory',this)">收发存库存表</div>
+    <div class="tab" onclick="switchTab('tab-prod',this)">产值汇总表</div>
+    <div class="tab" onclick="switchTab('tab-sales',this)">销售产值汇总表</div>
+    <div class="tab" onclick="switchTab('tab-new',this)" id="tab-new-btn" style="display:none">新产品产值汇总</div>
+  </div>
+
+  <div class="tab-content active" id="tab-monthly">
+    <div class="table-wrapper compare-table" id="monthlyTable"></div>
+  </div>
+  <div class="tab-content" id="tab-inventory"><div class="table-wrapper" id="inventoryTable"></div></div>
+  <div class="tab-content" id="tab-prod"><div class="table-wrapper" id="prodSummaryTable"></div></div>
+  <div class="tab-content" id="tab-sales"><div class="table-wrapper" id="salesSummaryTable"></div></div>
+  <div class="tab-content" id="tab-new"><div class="table-wrapper" id="newProdTable"></div></div>
+</div>
+
+<!-- 核算结果占位（无数据时） -->
+<div class="card" id="placeholderCard" style="text-align:center;padding:50px;color:var(--text-secondary)">
+  <div style="font-size:42px;margin-bottom:12px">📊</div>
+  <div style="font-size:15px;font-weight:600;margin-bottom:6px;color:var(--header)">暂无核算结果</div>
+  <div style="font-size:12px">先上传3个Excel，确认字段映射后将在此显示完整报表</div>
+</div>
+
+<!-- 价格档案 -->
+<div class="card">
+  <h2><span class="num">3</span>销售单价档案<span style="font-size:11px;color:var(--text-secondary);font-weight:400;margin-left:auto" id="archiveInfo"></span></h2>
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+    <span style="font-size:11px;background:#EDF2F7;color:#4A5568;padding:3px 10px;border-radius:10px" id="archiveStats"></span>
+    <button class="btn-action outline" style="padding:5px 14px;font-size:11px" onclick="clearArchive()">🗑 清空档案</button>
+  </div>
+  <div class="table-wrapper" id="archiveTable" style="max-height:450px"></div>
+</div>
+
+<!-- 日志 -->
+<div class="card">
+  <h2><span class="num">4</span>处理日志</h2>
+  <div class="log-area" id="logArea"><span class="log-info">[就绪]</span> 请上传产成品入库、销售发票、销售出库数据。</div>
+</div>
+
+<div class="footer">工具开发者公众号：致会计</div>
+</div>
+
+<script>
+// ========== 全局状态 ==========
+const state = {
+  inbound:null, inboundCols:[], invoice:null, invoiceCols:[], salesOut:null, salesOutCols:[],
+  mapInbound:{month:'',name:'',spec:'',qty:'',unit:''},
+  mapInvoice:{month:'',name:'',spec:'',qty:'',amount:'',taxRate:''},
+  mapSalesOut:{month:'',name:'',spec:'',qty:'',unit:''},
+  priceMap:{}, allMonths:[], resultProd:[], resultSales:[],
+  productMaster:{}, workingMonth:'',
+};
+
+const ARCHIVE_KEY='pv_price_archive', MASTER_KEY='pv_product_master', MONTHLY_KEY='pv_monthly_totals';
+function loadData(key){try{return JSON.parse(localStorage.getItem(key))||{}}catch(e){return{}}}
+function saveData(key,data){try{localStorage.setItem(key,JSON.stringify(data))}catch(e){log('保存失败','error')}}
+
+function log(msg,type){
+  const cls=type==='warn'?'log-warn':type==='error'?'log-error':type==='ok'?'log-ok':'log-info';
+  document.getElementById('logArea').innerHTML+=`\n<span class="${cls}">[${new Date().toLocaleTimeString()}]</span> ${msg}`;
+  const el=document.getElementById('logArea');el.scrollTop=el.scrollHeight;
+}
+
+function parseMonth(raw){
+  if(!raw)return null;const s=String(raw).trim();
+  let m=s.match(/^(\d{4})[-/.](\d{1,2})$/);if(m)return m[1]+'-'+m[2].padStart(2,'0');
+  m=s.match(/^(\d{4})\s*年\s*(\d{1,2})\s*月?$/);if(m)return m[1]+'-'+m[2].padStart(2,'0');
+  m=s.match(/^(\d{4})\/(\d{1,2})$/);if(m)return m[1]+'-'+m[2].padStart(2,'0');
+  m=s.match(/^(\d{4})(\d{2})$/);if(m&&parseInt(m[1])>=2000&&parseInt(m[2])<=12)return m[1]+'-'+m[2];
+  return null;
+}
+
+function handleUpload(type,input){
+  const file=input.files[0];if(!file)return;log('读取: '+file.name);
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){log('文件为空','error');return}
+      const cols=Object.keys(rows[0]);
+      if(type==='inbound'){state.inbound=rows;state.inboundCols=cols;document.getElementById('cardInbound').classList.add('loaded');document.getElementById('infoInbound').innerHTML='✅ '+file.name+'<br>'+rows.length+'行';autoMapCols('inbound')}
+      else if(type==='invoice'){state.invoice=rows;state.invoiceCols=cols;document.getElementById('cardInvoice').classList.add('loaded');document.getElementById('infoInvoice').innerHTML='✅ '+file.name+'<br>'+rows.length+'行';autoMapCols('invoice')}
+      else{state.salesOut=rows;state.salesOutCols=cols;document.getElementById('cardSalesOut').classList.add('loaded');document.getElementById('infoSalesOut').innerHTML='✅ '+file.name+'<br>'+rows.length+'行';autoMapCols('salesOut')}
+      log('['+type+'] '+rows.length+'行, 列名: '+cols.join('/'),'ok')
+      // 输出自动映射结果（特别是销售出库）
+      if(type==='salesOut'){
+        const m=state.mapSalesOut;
+        log('销售出库字段已自动识别: 月份→'+(m.month||'⚠️未识别')+', 产品→'+(m.name||'⚠️未识别')+', 规格→'+(m.spec||'—')+', 数量→'+(m.qty||'⚠️未识别')+', 单位→'+(m.unit||'—'),'info');
+        if(!m.month||!m.name||!m.qty){log('部分字段未识别，请在下方「字段映射」下拉框中手动选择对应列','warn')}
+      }
+    }catch(err){log('读取失败: '+err.message,'error')}
+    checkReady();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function autoMapCols(type){
+  const cols=type==='inbound'?state.inboundCols:type==='invoice'?state.invoiceCols:state.salesOutCols;
+  const dataRows=type==='inbound'?state.inbound:type==='invoice'?state.invoice:state.salesOut;
+  const map=type==='inbound'?state.mapInbound:type==='invoice'?state.mapInvoice:state.mapSalesOut;
+  // 核心策略：如果入库已映射，优先用入库的列名直接匹配
+  const inboundMapped={};
+  if(type!=='inbound' && state.mapInbound){
+    for(const f of ['month','name','spec','qty','unit']){
+      if(state.mapInbound[f]) inboundMapped[f]=state.mapInbound[f];
+    }
+  }
+
+  const patterns={
+    month:['月份','年月','月','期间','mon','month','date','period','time','时间','日期','x月','排序'],
+    name:['产品名称','产品名','商品名称','商品','货品名称','货物名称','物料名称','产品','物料','名称','品名','货品','name','product'],
+    spec:['规格型号','规格','型号','specification','spec','model'],
+    qty:['销售出库数量','出库数量','入库数量','发货数量','销售数量','开票数量','发票数量','数量','qty','quantity','num','count'],
+    unit:['计量单位','单位','unit','计量'],
+    amount:['含税金额','价税合计','发票金额','开票金额','金额合计','金额','amount','total','money'],
+    taxRate:['税率(%)','税率%','税率','tax','rate']
+  };
+  const colOrder=['month','name','spec','qty','unit'];
+
+  for(const[f,ks]of Object.entries(patterns)){
+    if(map[f]) continue;
+    // 1. 入库列名直接匹配
+    if(inboundMapped[f] && cols.includes(inboundMapped[f])){ map[f]=inboundMapped[f]; continue; }
+    // 2. 关键词模糊匹配
+    let found=null;
+    for(const k of ks){ found=cols.find(c=>c.toLowerCase().includes(k.toLowerCase())||k.toLowerCase().includes(c.toLowerCase())); if(found) break; }
+    if(found){ map[f]=found; continue; }
+    // 3. 数据类型兜底
+    if(dataRows && dataRows.length>0){
+      if(f==='qty'){
+        let maxCol=null, maxVal=-1;
+        for(const c of cols){
+          const nums=dataRows.slice(0,20).map(r=>parseFloat(r[c])).filter(n=>!isNaN(n)&&n>0);
+          if(nums.length>0 && Math.max(...nums)>maxVal){maxVal=Math.max(...nums);maxCol=c}
+        }
+        if(maxCol){ map[f]=maxCol; continue; }
+      }
+      if(f==='month'){
+        const monthCol=cols.find(c=>dataRows.some(r=>parseMonth(r[c])));
+        if(monthCol){ map[f]=monthCol; continue; }
+      }
+    }
+    // 4. 列索引兜底
+    const idx=colOrder.indexOf(f);
+    if(idx>=0 && idx<cols.length && !map[f]){ map[f]=cols[idx]; }
+  }
+  // 如果收到外部联动反馈，重新映射其他文件
+  if(type==='inbound' && state.salesOut && state.salesOutCols){
+    autoMapCols('salesOut');
+  }
+  if(type==='salesOut' && state.inbound && state.inboundCols){
+    // Already run via current call, no need
+  }
+}
+
+function checkReady(){
+  if(state.inbound&&state.invoice){document.getElementById('mappingPanel').classList.add('show');renderMapping();log('数据就绪','ok')}
+}
+
+function renderMapping(){
+  document.getElementById('mappingContent').innerHTML=`
+  <div><h4 class="c1">入库字段</h4>${sel('月份','mapInbound','month',state.inboundCols)}${sel('产品名称','mapInbound','name',state.inboundCols)}${sel('规格','mapInbound','spec',state.inboundCols)}${sel('数量','mapInbound','qty',state.inboundCols)}${sel('单位','mapInbound','unit',state.inboundCols)}</div>
+  <div><h4 class="c2">发票字段</h4>${sel('月份','mapInvoice','month',state.invoiceCols)}${sel('产品名称','mapInvoice','name',state.invoiceCols)}${sel('规格','mapInvoice','spec',state.invoiceCols)}${sel('数量','mapInvoice','qty',state.invoiceCols)}${sel('含税金额','mapInvoice','amount',state.invoiceCols)}${sel('税率%','mapInvoice','taxRate',state.invoiceCols)}</div>
+  <div><h4 class="c3">出库字段</h4>${sel('月份','mapSalesOut','month',state.salesOutCols)}${sel('产品名称','mapSalesOut','name',state.salesOutCols)}${sel('规格','mapSalesOut','spec',state.salesOutCols)}${sel('数量','mapSalesOut','qty',state.salesOutCols)}${sel('单位','mapSalesOut','unit',state.salesOutCols)}</div>`;
+}
+function sel(label,mapKey,field,cols){
+  const v=state[mapKey][field]||'';
+  return`<div class="mapping-row"><label>${label}:</label><select onchange="state.${mapKey}.${field}=this.value">${cols.map(c=>`<option value="${c}" ${c===v?'selected':''}>${c}</option>`).join('')}</select></div>`;
+}
+
+function confirmMapping(){
+  const mi=state.mapInbound,mv=state.mapInvoice;
+  if(!mi.month||!mi.name||!mi.qty){log('请完成入库映射','warn');return}
+  if(!mv.month||!mv.name||!mv.qty||!mv.amount||!mv.taxRate){log('请完成发票映射','warn');return}
+  const firstRow=state.inbound[0];
+  state.workingMonth=parseMonth(firstRow[mi.month])||'';
+
+  // 先从档案里加载历史价格
+  const archive=loadArchive();
+  const priceMap={};
+  for(const[key,months]of Object.entries(archive)){
+    priceMap[key]={};
+    for(const[month,d]of Object.entries(months)){
+      priceMap[key][month]={taxExclTotal:0,totalQty:0,avgPrice:d.avgPrice,displayName:d.displayName,spec:d.spec};
+    }
+  }
+  const monthSet=new Set(Object.keys(archive).flatMap(k=>Object.keys(archive[k])));
+  let invCount=0;
+  for(const row of state.invoice){
+    const month=parseMonth(row[mv.month]),name=String(row[mv.name]||'').trim(),spec=mv.spec?String(row[mv.spec]||'').trim():'';
+    const key=spec?`${name}|${spec}`:name,qty=parseFloat(row[mv.qty])||0,amount=parseFloat(row[mv.amount])||0,taxRate=parseFloat(row[mv.taxRate])||0;
+    if(!month||!name||qty<=0||amount<=0)continue;
+    const taxExcl=amount/(1+taxRate/100);
+    if(!priceMap[key])priceMap[key]={};
+    // 发票数据覆盖档案（本月数据以最新发票为准）
+    priceMap[key][month]={taxExclTotal:taxExcl,totalQty:qty,avgPrice:taxExcl/qty,displayName:name,spec};
+    monthSet.add(month);invCount++;
+  }
+  for(const key of Object.keys(priceMap))for(const month of Object.keys(priceMap[key])){const d=priceMap[key][month];d.avgPrice=d.totalQty>0?d.taxExclTotal/d.totalQty:0}
+  state.priceMap=priceMap;state.allMonths=Array.from(monthSet).sort();
+  log(`价格表: ${Object.keys(priceMap).length}产品`,'ok');
+
+  state.resultProd=calcValue(state.inbound,state.mapInbound);
+  // 销售产值：有数据且映射完整才核算
+  const ms=state.mapSalesOut;
+  if(state.salesOut && state.salesOut.length){
+    if(!ms.month){log('销售出库的「月份」字段未映射，请在下拉框中选择对应列','warn')}
+    else if(!ms.name){log('销售出库的「产品名称」字段未映射','warn')}
+    else if(!ms.qty){log('销售出库的「数量」字段未映射','warn')}
+    if(ms.month && ms.name && ms.qty){
+      state.resultSales=calcValue(state.salesOut,state.mapSalesOut);
+      log(`销售产值核算完成: ${state.resultSales.result.length} 条记录, 合计 ¥${state.resultSales.summary.totalValue.toLocaleString()}`,'ok');
+    }else{
+      state.resultSales=[];
+      log('销售产值未核算（请完成字段映射后重新点确认映射）','warn');
+    }
+  }else{
+    state.resultSales=[];
+  }
+  mergeArchive(priceMap);
+  buildProductMaster();
+  renderProdMgmt();
+  renderAllResults();
+}
+
+function calcValue(dataRows,mapping){
+  const priceMap=state.priceMap,allMonths=state.allMonths,result=[];
+  let totalValue=0,backtrackCount=0,noPriceCount=0;
+  for(const row of dataRows){
+    const month=parseMonth(row[mapping.month]),name=String(row[mapping.name]||'').trim(),spec=mapping.spec?String(row[mapping.spec]||'').trim():'';
+    const qty=parseFloat(row[mapping.qty])||0,unit=mapping.unit?(row[mapping.unit]||''):'',key=spec?`${name}|${spec}`:name;
+    if(!month||!name||qty<=0)continue;
+    let priceMonth=null,avgPrice=0,priceSource='none',backtrackMonths=0;
+    const productMonths=priceMap[key]?Object.keys(priceMap[key]).sort():[];
+    if(productMonths.length>0){for(let i=productMonths.length-1;i>=0;i--){const pm=productMonths[i];if(pm<=month){priceMonth=pm;avgPrice=priceMap[key][pm].avgPrice;backtrackMonths=(allMonths.indexOf(month)||0)-(allMonths.indexOf(pm)||0);priceSource=pm===month?'current':'backtrack';if(priceSource==='backtrack')backtrackCount++;break}}if(!priceMonth&&productMonths.length>0){priceMonth=productMonths[0];avgPrice=priceMap[key][priceMonth].avgPrice;priceSource='backtrack';backtrackCount++}}
+    if(!priceMonth){noPriceCount++;priceSource='none'}
+    const value=avgPrice>0?Math.round(qty*avgPrice*100)/100:0;totalValue+=value;
+    result.push({month,name,spec,key,qty,unit,priceMonth:priceMonth||'',backtrackMonths,avgPrice:Math.round(avgPrice*10000)/10000,value,priceSource});
+  }
+  return {result,summary:{totalValue:Math.round(totalValue*100)/100,recordCount:result.length,backtrackCount,noPriceCount}};
+}
+
+function buildProductMaster(){
+  const master=loadData(MASTER_KEY);
+  const allKeys=new Set(),mi=state.mapInbound,ms=state.mapSalesOut;
+  const allRows=[...(state.inbound||[]),...(state.salesOut||[])];
+  for(const row of allRows){
+    const name=String(row[mi.name]||row[ms.name]||'').trim(),spec=(mi.spec&&row[mi.spec]||ms.spec&&row[ms.spec]||'').trim();
+    const key=spec?`${name}|${spec}`:name;
+    if(name)allKeys.add(JSON.stringify({name,spec,key}));
+  }
+  for(const item of Array.from(allKeys).map(s=>JSON.parse(s))){
+    if(!master[item.key])master[item.key]={name:item.name,spec:item.spec,isNew:false,openingStock:0,firstSeen:state.workingMonth};
+  }
+  state.productMaster=master;
+  saveData(MASTER_KEY,master);
+}
+
+function renderProdMgmt(){
+  const master=state.productMaster,keys=Object.keys(master).sort();
+  if(!keys.length){document.getElementById('prodMgmtPanel').style.display='none';return}
+  let html='<table><thead><tr><th>产品名称</th><th>规格</th><th>新产品</th><th>期初库存</th><th>单位</th><th>首次出现</th></tr></thead><tbody>';
+  for(const key of keys){const p=master[key];html+=`<tr><td><strong>${p.name}</strong></td><td>${p.spec||''}</td><td><input type="checkbox" ${p.isNew?'checked':''} onchange="toggleNew('${key}',this.checked)"></td><td><input type="number" value="${p.openingStock}" onchange="setOpening('${key}',this.value)" step="0.01" min="0"></td><td>吨</td><td>${p.firstSeen||''}</td></tr>`}
+  html+='</tbody></table>';
+  document.getElementById('prodMgmtTable').innerHTML=html;document.getElementById('prodMgmtPanel').style.display='block';
+}
+
+function toggleNew(key,val){state.productMaster[key].isNew=val;saveData(MASTER_KEY,state.productMaster);renderAllResults()}
+function setOpening(key,val){state.productMaster[key].openingStock=parseFloat(val)||0;saveData(MASTER_KEY,state.productMaster);renderAllResults()}
+
+function renderAllResults(){
+  const master=state.productMaster,prodResult=state.resultProd.result,salesResult=state.resultSales.result && state.resultSales.result.length?state.resultSales.result:[];
+  const ps=state.resultProd.summary,ss=state.resultSales.result && state.resultSales.result.length?state.resultSales.summary:{totalValue:0};
+  const wm=state.workingMonth;
+  const isNew=k=>master[k]&&master[k].isNew;
+
+  let newProdTotal=0;for(const r of prodResult)if(isNew(r.key))newProdTotal+=r.value;
+
+  document.getElementById('summaryCards').innerHTML=`
+  <div class="summary-item"><div class="val primary">¥${ps.totalValue.toLocaleString()}</div><div class="lbl">工业产值</div></div>
+  <div class="summary-item"><div class="val warning">¥${ss.totalValue.toLocaleString()}</div><div class="lbl">销售产值</div></div>
+  <div class="summary-item"><div class="val purple">¥${(Math.round(newProdTotal*100)/100).toLocaleString()}</div><div class="lbl">新产品产值</div></div>
+  <div class="summary-item"><div class="val info">${prodResult.length}/${salesResult.length}</div><div class="lbl">入库/出库记录</div></div>`;
+
+  saveMonthlyTotal(ps.totalValue,ss.totalValue,Math.round(newProdTotal*100)/100);
+  const mt=loadData(MONTHLY_KEY),thisYear=wm.substring(0,4),lastYear=String(parseInt(thisYear)-1),thisMonth=wm.substring(5,7);
+  const lyKey=`${lastYear}-${thisMonth}`,lyData=mt[lyKey];
+  let ytd={prod:0,sales:0,newProd:0},lyYtd={prod:0,sales:0,newProd:0};
+  for(const[k,v]of Object.entries(mt)){
+    if(k.startsWith(thisYear)&&k<=wm){ytd.prod+=v.prod||0;ytd.sales+=v.sales||0;ytd.newProd+=v.newProd||0}
+    if(k.startsWith(lastYear)&&k<=lyKey){lyYtd.prod+=v.prod||0;lyYtd.sales+=v.sales||0;lyYtd.newProd+=v.newProd||0}
+  }
+  ytd.prod=Math.round(ytd.prod*100)/100;ytd.sales=Math.round(ytd.sales*100)/100;ytd.newProd=Math.round(ytd.newProd*100)/100;
+  let ch='<table><thead><tr><th>项目</th><th>本月</th><th>本年累计</th><th>上年同期(月)</th><th>上年同期(累计)</th><th>同比(月)</th><th>同比(累计)</th></tr></thead><tbody>';
+  function row(label,cur,ytd,lym,lyY,color){
+    const mD=lym?((cur-lym)/lym*100).toFixed(1):'—',yD=lyY?((ytd-lyY)/lyY*100).toFixed(1):'—';
+    const mC=mD!=='—'?(mD>=0?'val up':'val down'):'',yC=yD!=='—'?(yD>=0?'val up':'val down'):'';
+    ch+=`<tr><td><strong>${label}</strong></td><td style="font-weight:700;color:${color}">¥${cur.toLocaleString()}</td><td>¥${ytd.toLocaleString()}</td><td>${lym?'¥'+lym.toLocaleString():'—'}</td><td>${lyY?'¥'+lyY.toLocaleString():'—'}</td><td class="${mC}">${mD!=='—'?(mD>=0?'+':'')+mD+'%':'—'}</td><td class="${yC}">${yD!=='—'?(yD>=0?'+':'')+yD+'%':'—'}</td></tr>`;
+  }
+  row('工业产值',ps.totalValue,ytd.prod,lyData?lyData.prod:null,lyYtd.prod,'#E84B37');
+  row('销售产值',ss.totalValue,ytd.sales,lyData?lyData.sales:null,lyYtd.sales,'#D69E2E');
+  row('新产品产值',Math.round(newProdTotal*100)/100,ytd.newProd,lyData?lyData.newProd:null,lyYtd.newProd,'#6B46C1');
+  ch+='</tbody></table>';
+  document.getElementById('monthlyTable').innerHTML=ch;
+
+  let ih='<table><thead><tr><th>产品</th><th>规格</th><th>期初库存</th><th>本期入库</th><th>本期出库</th><th>期末库存</th><th>不含税均价</th><th>工业产值</th><th>销售产值</th></tr></thead><tbody>';
+  let tO=0,tI=0,tO2=0,tE=0,tPV=0,tSV=0;
+  for(const key of Object.keys(master).sort()){
+    const p=master[key],open=p.openingStock||0;
+    const iQ=prodResult.filter(r=>r.key===key).reduce((s,r)=>s+r.qty,0);
+    const oQ=salesResult.filter(r=>r.key===key).reduce((s,r)=>s+r.qty,0);
+    const eS=open+iQ-oQ;
+    const pV=prodResult.filter(r=>r.key===key).reduce((s,r)=>s+r.value,0);
+    const sV=salesResult.filter(r=>r.key===key).reduce((s,r)=>s+r.value,0);
+    const avgP=iQ>0?Math.round(pV/iQ*10000)/10000:0;
+    tO+=open;tI+=iQ;tO2+=oQ;tE+=eS;tPV+=pV;tSV+=sV;
+    ih+=`<tr><td><strong>${p.name}</strong></td><td>${p.spec||''}</td>
+      <td style="text-align:right">${open.toLocaleString()}</td><td style="text-align:right">${iQ.toLocaleString()}</td>
+      <td style="text-align:right">${oQ.toLocaleString()}</td><td style="text-align:right">${eS.toLocaleString()}</td>
+      <td style="text-align:right">¥${avgP.toFixed(4)}</td><td style="text-align:right;color:#E84B37;font-weight:600">¥${(Math.round(pV*100)/100).toLocaleString()}</td>
+      <td style="text-align:right;color:#D69E2E;font-weight:600">¥${(Math.round(sV*100)/100).toLocaleString()}</td></tr>`;
+  }
+  ih+=`<tr class="total-row"><td colspan="2">合计</td>
+    <td style="text-align:right">${tO.toLocaleString()}</td><td style="text-align:right">${tI.toLocaleString()}</td>
+    <td style="text-align:right">${tO2.toLocaleString()}</td><td style="text-align:right">${tE.toLocaleString()}</td>
+    <td></td><td style="text-align:right;color:#E84B37">¥${(Math.round(tPV*100)/100).toLocaleString()}</td>
+    <td style="text-align:right;color:#D69E2E">¥${(Math.round(tSV*100)/100).toLocaleString()}</td></tr></tbody></table>`;
+  document.getElementById('inventoryTable').innerHTML=ih;
+
+  document.getElementById('prodSummaryTable').innerHTML=buildSummaryTable(prodResult,'产值','#E84B37');
+  document.getElementById('salesSummaryTable').innerHTML=salesResult.length?buildSummaryTable(salesResult,'销售产值','#D69E2E'):'<p style="text-align:center;color:var(--text-secondary);padding:20px">'+(state.salesOut&&state.salesOut.length?'⚠️ 已上传销售出库，但映射未完成或无有效数据':'未上传销售出库数据')+'</p>';
+
+  const newProd=prodResult.filter(r=>isNew(r.key));
+  if(newProd.length){document.getElementById('tab-new-btn').style.display='inline-block';document.getElementById('newProdTable').innerHTML=buildSummaryTable(newProd,'产值','#6B46C1')}
+  else{document.getElementById('tab-new-btn').style.display='none'}
+
+  document.getElementById('placeholderCard').classList.add('hidden');
+  document.getElementById('resultSection').classList.remove('hidden');
+  document.getElementById('resultSection').scrollIntoView({behavior:'smooth'});
+  log(`核算完成: 产值¥${ps.totalValue.toLocaleString()} 销售产值¥${ss.totalValue.toLocaleString()} 新产品产值¥${(Math.round(newProdTotal*100)/100).toLocaleString()}`,'ok');
+}
+
+function buildSummaryTable(data,label,color){
+  const groups={};
+  for(const r of data){if(!groups[r.key])groups[r.key]={name:r.name,spec:r.spec,key:r.key,totalQty:0,totalValue:0,count:0};const g=groups[r.key];g.totalQty+=r.qty;g.totalValue+=r.value;g.count++}
+  const keys=Object.keys(groups).sort();
+  let html=`<table><thead><tr><th>产品</th><th>规格</th><th>${label}记录数</th><th>总数量</th><th>单位</th><th>金额合计</th></tr></thead><tbody>`;
+  let grand=0;
+  for(const k of keys){const g=groups[k];grand+=g.totalValue;const tag=state.productMaster[k]&&state.productMaster[k].isNew?' <span class="tag tag-new">新</span>':'';html+=`<tr><td><strong>${g.name}</strong>${tag}</td><td>${g.spec||''}</td><td>${g.count}</td><td style="text-align:right">${g.totalQty.toLocaleString()}</td><td>吨</td><td style="text-align:right;font-weight:700;color:${color}">¥${(Math.round(g.totalValue*100)/100).toLocaleString()}</td></tr>`}
+  html+=`<tr class="total-row"><td colspan="5" style="text-align:right">合计：</td><td style="color:${color};font-size:14px">¥${(Math.round(grand*100)/100).toLocaleString()}</td></tr></tbody></table>`;
+  return html;
+}
+
+function saveMonthlyTotal(prodVal,salesVal,newProdVal){
+  if(!state.workingMonth)return;
+  const mt=loadData(MONTHLY_KEY);
+  mt[state.workingMonth]={prod:prodVal,sales:salesVal,newProd:newProdVal,savedAt:new Date().toISOString()};
+  saveData(MONTHLY_KEY,mt);
+  log(`月度总表已保存: ${state.workingMonth}`,'ok');
+}
+
+// ========== 价格档案 ==========
+function loadArchive(){return loadData(ARCHIVE_KEY)}
+function saveArchive(data){saveData(ARCHIVE_KEY,data)}
+function mergeArchive(priceMap){const archive=loadArchive();let nc=0;for(const[key,months]of Object.entries(priceMap)){if(!archive[key])archive[key]={};for(const[month,d]of Object.entries(months)){if(!archive[key][month]){archive[key][month]={displayName:d.displayName,spec:d.spec,taxExclTotal:d.taxExclTotal,totalQty:d.totalQty,avgPrice:d.avgPrice};nc++}else archive[key][month]={displayName:d.displayName,spec:d.spec,taxExclTotal:d.taxExclTotal,totalQty:d.totalQty,avgPrice:d.avgPrice}} }saveArchive(archive);log(`档案: ${Object.keys(archive).length}产品 +${nc}条`,'ok');renderArchiveView(archive);return archive}
+function clearArchive(){if(!confirm('确定清空全部价格档案？不可恢复！'))return;localStorage.removeItem(ARCHIVE_KEY);log('档案已清空','warn');renderArchiveView({})}
+function renderArchiveView(archive){
+  if(!archive)archive=loadArchive();const keys=Object.keys(archive).sort();if(!keys.length){document.getElementById('archiveTable').innerHTML='<p style="text-align:center;color:var(--text-secondary);padding:40px">暂无档案，导入发票后自动归拢</p>';document.getElementById('archiveStats').textContent='';document.getElementById('archiveInfo').textContent='';return}
+  const ms=new Set();keys.forEach(k=>Object.keys(archive[k]).forEach(m=>ms.add(m)));const months=Array.from(ms).sort();
+  let html='<table><thead><tr><th>产品</th><th>规格</th>';months.forEach(m=>html+=`<th>${m}</th>`);html+='</tr></thead><tbody>';
+  keys.forEach(key=>{const fm=Object.values(archive[key])[0]||{};html+=`<tr><td><strong>${fm.displayName||key}</strong></td><td>${fm.spec||''}</td>`;months.forEach(m=>{const d=archive[key][m];html+=d?`<td style="text-align:right"><b>¥${d.avgPrice.toFixed(4)}</b><br><span style="font-size:10px;color:#A0AEC0">量:${d.totalQty.toLocaleString()}</span></td>`:'<td style="text-align:center;color:#A0AEC0">—</td>'});html+='</tr>'});
+  html+='</tbody></table>';
+  document.getElementById('archiveTable').innerHTML=html;document.getElementById('archiveStats').textContent=`${keys.length}产品·${months.length}个月·${months[0]}~${months[months.length-1]}`;document.getElementById('archiveInfo').textContent=`更新: ${new Date().toLocaleString()}`;
+}
+function exportArchive(){const archive=loadArchive(),keys=Object.keys(archive).sort();if(!keys.length){log('无档案','warn');return}const ms=new Set();keys.forEach(k=>Object.keys(archive[k]).forEach(m=>ms.add(m)));const months=Array.from(ms).sort();const data=keys.map(key=>{const fm=Object.values(archive[key])[0]||{};const row={'产品名称':fm.displayName||key,'规格':fm.spec||''};months.forEach(m=>{const d=archive[key][m];row[m]=d?d.avgPrice:''});return row});const ws=XLSX.utils.json_to_sheet(data),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'价格档案');downloadXlsx(wb,`销售单价档案_${new Date().toISOString().slice(0,10)}.xlsx`);log('档案已导出','ok')}
+function importArchive(input){const file=input.files[0];if(!file)return;log('导入档案: '+file.name);const reader=new FileReader();reader.onload=function(e){try{const wb=XLSX.read(e.target.result,{type:'array'});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});if(!rows.length){log('空文件','error');return}const cols=Object.keys(rows[0]),monthCols=cols.filter(c=>c!=='产品名称'&&c!=='规格');const archive=loadArchive();let imp=0;for(const row of rows){const name=String(row['产品名称']||'').trim(),spec=String(row['规格']||'').trim();if(!name)continue;const key=spec?`${name}|${spec}`:name;if(!archive[key])archive[key]={};for(const m of monthCols){const val=parseFloat(row[m]);if(isNaN(val)||val<=0)continue;archive[key][m]={displayName:name,spec,taxExclTotal:0,totalQty:0,avgPrice:val};imp++}}saveArchive(archive);log(`导入: ${imp}条`,'ok');renderArchiveView(archive)}catch(err){log('导入失败: '+err.message,'error')}};reader.readAsArrayBuffer(file);input.value=''}
+
+// ========== 导出报表 ==========
+function exportResult(){
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(buildInventoryData()),'收发存库存表');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(buildExportData(state.resultProd.result,'产值')),'产值汇总');
+  if(state.resultSales.result && state.resultSales.result.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(buildExportData(state.resultSales.result,'销售产值')),'销售产值汇总');
+  const newProd=state.resultProd.result.filter(r=>state.productMaster[r.key]&&state.productMaster[r.key].isNew);
+  if(newProd.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(buildExportData(newProd,'新产品产值')),'新产品产值');
+  downloadXlsx(wb,`产值核算报表_${state.workingMonth||'unknown'}.xlsx`);log('报表已导出','ok');
+}
+function buildInventoryData(){
+  const master=state.productMaster,prodResult=state.resultProd.result,salesResult=state.resultSales.result && state.resultSales.result.length?state.resultSales.result:[];
+  const data=[];
+  for(const key of Object.keys(master).sort()){
+    const p=master[key],open=p.openingStock||0;
+    const iQ=prodResult.filter(r=>r.key===key).reduce((s,r)=>s+r.qty,0);
+    const oQ=salesResult.filter(r=>r.key===key).reduce((s,r)=>s+r.qty,0);
+    const end=open+iQ-oQ;
+    const pV=prodResult.filter(r=>r.key===key).reduce((s,r)=>s+r.value,0);
+    const sV=salesResult.filter(r=>r.key===key).reduce((s,r)=>s+r.value,0);
+    const avgP=iQ>0?Math.round(pV/iQ*10000)/10000:0;
+    data.push({'产品名称':p.name,'规格':p.spec||'','期初库存':open,'本期入库':iQ,'本期出库':oQ,'期末库存':end,'不含税均价':avgP,'工业产值':Math.round(pV*100)/100,'销售产值':Math.round(sV*100)/100});
+  }
+  return data;
+}
+function buildExportData(arr,label){return arr.map((r,i)=>({'序号':i+1,'月份':r.month,'产品名称':r.name,'规格':r.spec||'','数量':r.qty,'单位':r.unit,'取价月份':r.priceMonth||'—','不含税均价':r.avgPrice||'',[label]:r.value}))}
+function downloadXlsx(wb,filename){
+  if(!filename.toLowerCase().endsWith('.xlsx'))filename+='.xlsx';
+  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=filename;a.style.display='none';document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url)},100);
+}
+
+// ========== 模版下载 ==========
+function downloadTemplate(type){
+  let headers=[], filename='', sample=[];
+  if(type==='inbound'){
+    headers=['月份','产品名称','规格','入库数量','单位'];
+    sample=['2024-01','螺纹钢','Φ12mm',450,'吨'];
+    filename='模版_产成品入库.xlsx';
+  }else if(type==='invoice'){
+    headers=['月份','产品名称','规格','数量','含税金额','税率(%)'];
+    sample=['2024-01','螺纹钢','Φ12mm',420,1596000,13];
+    filename='模版_销售发票清单.xlsx';
+  }else{
+    headers=['月份','产品名称','规格','销售出库数量','单位'];
+    sample=['2024-01','螺纹钢','Φ12mm',400,'吨'];
+    filename='模版_销售出库.xlsx';
+  }
+  const ws=XLSX.utils.aoa_to_sheet([headers,sample]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
+  downloadXlsx(wb,filename);
+  log('已下载模版: '+filename,'ok');
+}
+
+// ========== 辅助 ==========
+function switchTab(tabId,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+
+function resetAll(){
+  state.inbound=null;state.inboundCols=[];state.invoice=null;state.invoiceCols=[];state.salesOut=null;state.salesOutCols=[];
+  state.mapInbound={month:'',name:'',spec:'',qty:'',unit:''};state.mapInvoice={month:'',name:'',spec:'',qty:'',amount:'',taxRate:''};state.mapSalesOut={month:'',name:'',spec:'',qty:'',unit:''};
+  state.priceMap={};state.allMonths=[];state.resultProd=[];state.resultSales=[];state.productMaster={};state.workingMonth='';
+  document.querySelectorAll('.upload-card').forEach(c=>c.classList.remove('loaded'));
+  document.querySelectorAll('.upload-card .info').forEach(e=>e.innerHTML='');
+  document.getElementById('mappingPanel').classList.remove('show');
+  document.getElementById('prodMgmtPanel').style.display='none';
+  document.getElementById('resultSection').classList.add('hidden');
+  document.getElementById('placeholderCard').classList.remove('hidden');
+  document.getElementById('logArea').innerHTML='<span class="log-info">[就绪]</span> 已重置。';
+  document.querySelectorAll('input[type=file]').forEach(i=>i.value='');
+}
+
+document.querySelectorAll('.upload-card').forEach(card=>{
+  card.addEventListener('dragover',e=>{e.preventDefault();card.style.borderColor='var(--primary)'});
+  card.addEventListener('dragleave',()=>{card.style.borderColor=''});
+  card.addEventListener('drop',function(e){
+    e.preventDefault();card.style.borderColor='';
+    const file=e.dataTransfer.files[0];if(!file)return;
+    const type=card.id==='cardInbound'?'inbound':card.id==='cardInvoice'?'invoice':'salesOut';
+    const input=document.getElementById(type==='inbound'?'fileInbound':type==='invoice'?'fileInvoice':'fileSalesOut');
+    const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;handleUpload(type,input);
+  });
+});
+
+(function(){const archive=loadArchive();if(Object.keys(archive).length>0){log(`档案: ${Object.keys(archive).length}产品`,'info');renderArchiveView(archive)}const mt=loadData(MONTHLY_KEY);if(Object.keys(mt).length>0)log(`月度总表: ${Object.keys(mt).length}个月`,'info')})();
+</script>
+</body>
+</html>
