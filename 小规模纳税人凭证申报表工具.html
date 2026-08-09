@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小规模纳税人 — 增值税 + 所得税 一体化工具 v3.7</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #f5f6f8;
+  --card-bg: #ffffff;
+  --text: #2c3e50;
+  --text-secondary: #636e72;
+  --border: #dfe6e9;
+  --primary: #e84b37;
+  --primary-light: #fdf0ee;
+  --accent: #0984e3;
+  --accent-light: #e8f4fd;
+  --success: #00b894;
+  --warning: #fdcb6e;
+  --danger: #d63031;
+  --green: #00b894;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --font: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:var(--font); background:var(--bg); color:var(--text); line-height:1.6; padding:24px; }
+.app { max-width:1200px; margin:0 auto; }
+.header { text-align:center; margin-bottom:28px; }
+.header h1 { font-size:24px; color:var(--primary); font-weight:700; }
+.header p { color:var(--text-secondary); font-size:13px; margin-top:4px; }
+h2 { font-size:17px; margin-bottom:16px; padding-bottom:8px; border-bottom:2px solid var(--border); color:var(--text); }
+h3 { font-size:14px; color:var(--text-secondary); margin-bottom:12px; font-weight:500; }
+.card { background:var(--card-bg); border-radius:var(--radius); box-shadow:var(--shadow); padding:24px; margin-bottom:20px; }
+.row { display:flex; gap:16px; flex-wrap:wrap; }
+.col { flex:1; min-width:200px; }
+.form-group { margin-bottom:14px; }
+.form-group label { display:block; font-size:13px; font-weight:600; color:var(--text-secondary); margin-bottom:5px; }
+.form-group .hint { font-size:11px; color:#b2bec3; }
+input, select { width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-size:14px; font-family:var(--font); transition:border-color .2s; background:#fafbfc; }
+input:focus, select:focus { outline:none; border-color:var(--accent); background:#fff; }
+input[readonly] { background:#f0f2f5; color:var(--text-secondary); cursor:default; }
+.action-bar { display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; }
+.btn { padding:10px 22px; border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; font-family:var(--font); }
+.btn-primary { background:var(--primary); color:#fff; }
+.btn-primary:hover { background:#d63031; }
+.btn-accent { background:var(--accent); color:#fff; }
+.btn-accent:hover { background:#0652DD; }
+.btn-outline { background:#fff; border:1.5px solid var(--border); color:var(--text); }
+.btn-outline:hover { background:var(--bg); }
+.btn-sm { padding:6px 14px; font-size:12px; }
+.result-section { margin-top:20px; }
+.result-section.hidden { display:none; }
+.secondary { color:var(--text-secondary); font-size:12px; }
+.entry-box { background:#fafbfc; border:1px solid var(--border); border-radius:var(--radius-sm); padding:14px 18px; font-family:"Courier New", "Source Code Pro", monospace; font-size:13px; line-height:1.9; white-space:pre-wrap; overflow-x:auto; }
+.entry-box .debit { color:var(--primary); }
+.entry-box .credit { color:var(--accent); }
+.entry-box .comment { color:#b2bec3; }
+.summary-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin:16px 0; }
+.summary-item { background:var(--bg); border-radius:var(--radius-sm); padding:12px 16px; text-align:center; }
+.summary-item .val { font-size:22px; font-weight:700; color:var(--primary); }
+.summary-item .val.green { color:var(--green); }
+.summary-item .val.blue { color:var(--accent); }
+.summary-item .lbl { font-size:11px; color:var(--text-secondary); margin-top:2px; }
+
+/* 申报表样式 */
+.declaration-table { width:100%; border-collapse:collapse; font-size:13px; margin:12px 0; }
+.declaration-table th, .declaration-table td { padding:8px 10px; border:1px solid var(--border); text-align:center; }
+.declaration-table th { background:#f8f9fa; font-weight:600; font-size:12px; }
+.declaration-table .row-label { text-align:left; padding-left:14px; }
+.declaration-table .row-indent { text-align:left; padding-left:28px; }
+.declaration-table .row-subtotal { font-weight:600; background:#fffbf0; }
+.declaration-table .highlight-row { background:var(--primary-light); font-weight:700; }
+.tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:700; }
+.tag-exempt { background:#d4edda; color:#155724; }
+.tag-pay { background:#f8d7da; color:#721c24; }
+.tag-pay-half { background:#fff3cd; color:#856404; }
+.compare-note { background:var(--warning); padding:8px 14px; border-radius:var(--radius-sm); font-size:12px; margin:10px 0; border-left:3px solid #e17055; }
+
+.tabs { display:flex; gap:0; margin-bottom:0; border-bottom:2px solid var(--border); }
+.tab { padding:10px 24px; cursor:pointer; font-size:14px; font-weight:600; color:var(--text-secondary); border-bottom:2px solid transparent; margin-bottom:-2px; transition:all .2s; border-radius:var(--radius-sm) var(--radius-sm) 0 0; }
+.tab.active { color:var(--primary); border-bottom-color:var(--primary); }
+.tab:hover { color:var(--primary); }
+.tab-content { display:none; padding-top:18px; }
+.tab-content.active { display:block; }
+.empty-hint { text-align:center; padding:40px; color:var(--text-secondary); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="header">
+  <h1>小规模纳税人 — 增值税 + 所得税 一体化工具 v3.7</h1>
+  <p>适配 2026 年《增值税法》新政 | 财政部 税务总局公告2026年第10号 | 国家税务总局公告2026年第4号</p>
+  <div style="margin-top:14px;">
+    <button class="btn btn-accent" onclick="document.getElementById('file-import').click()" style="box-shadow:0 2px 6px rgba(9,132,227,0.3);">📥 导入Excel取数</button>
+    <button class="btn btn-outline" onclick="downloadTemplate()">📋 下载导入模板</button>
+    <button class="btn btn-accent" onclick="exportTaxDetail()" style="box-shadow:0 2px 6px rgba(9,132,227,0.3);">📊 导出税费明细 Excel</button>
+    <button class="btn btn-primary" onclick="exportProfitTable()" style="box-shadow:0 2px 6px rgba(232,75,55,0.3);">📈 导出利润表 Excel</button>
+    <input type="file" id="file-import" accept=".xlsx,.xls" style="display:none;" onchange="importExcel(this)">
+  </div>
+  <div style="margin-top:10px; text-align:center;">
+    <button onclick="toggleHelp()" style="background:none; border:none; color:var(--accent); cursor:pointer; font-size:13px; font-family:var(--font);">💡 使用帮助</button>
+  </div>
+  <div id="help-panel" style="display:none; text-align:left; max-width:700px; margin:10px auto 0; padding:14px 18px; background:#e8f4fd; border-radius:8px; font-size:13px; line-height:1.9;">
+    <strong>1. 填数据</strong>：从上到下依次填入本季/月的数据（均为<strong>含税金额</strong>）<br>
+    <strong>2. 点「生成凭证 & 申报表」</strong>：自动出记账凭证、增值税申报表、利润表与所得税<br>
+    <strong>3. 导入/导出</strong>：点击「下载导入模板」获取 Excel 模板 → 填好后「导入Excel取数」→「导出」税费明细和利润表<br>
+    <strong>4. 三个示例</strong>：点「加载示例1/2/3」可查看免税、全额缴税、混合三种场景<br>
+    <strong>5. 注意</strong>：凭证/申报表均为核算参考，<strong>非正式申报</strong>；收入成本费用均填含税金额<br>
+    <strong>6. 政策依据</strong>：2026年《增值税法》、财政部税务总局公告2026年第10号、国家税务总局公告2026年第4号
+  </div>
+</div>
+
+<!-- ============ 输入区 ============ -->
+<div class="card">
+  <h2>数据输入</h2>
+  <div class="row">
+    <div class="col">
+      <div class="form-group">
+        <label>纳税期间</label>
+        <select id="period-type">
+          <option value="quarter">按季申报</option>
+          <option value="month">按月申报</option>
+        </select>
+      </div>
+    </div>
+    <div class="col">
+      <div class="form-group">
+        <label>期间</label>
+        <select id="period-select">
+          <option value="Q1">第一季度（1-3月）</option>
+          <option value="Q2" selected>第二季度（4-6月）</option>
+          <option value="Q3">第三季度（7-9月）</option>
+          <option value="Q4">第四季度（10-12月）</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <h3>一、合计收入（含税金额）<span class="hint"> — 本期间全部含税收入总额</span></h3>
+  <div class="row">
+    <div class="col" style="max-width:320px;">
+      <div class="form-group">
+        <label>合计收入</label>
+        <input type="number" id="total-revenue" placeholder="0.00" step="0.01" min="0" value="0" oninput="autoCalcUnbilled();autoCalcStampDuty()">
+      </div>
+    </div>
+  </div>
+
+  <h3>二、已开票收入（含税金额）</h3>
+  <div class="row">
+    <div class="col">
+      <div class="form-group">
+        <label>普通发票（1% 税率）<span class="hint"> — 含税金额</span></label>
+        <input type="number" id="inv-normal-1pct" placeholder="0.00" step="0.01" min="0" value="0" oninput="autoCalcUnbilled()">
+      </div>
+    </div>
+    <div class="col">
+      <div class="form-group">
+        <label>增值税专用发票（1%）<span class="hint"> — 含税金额</span></label>
+        <input type="number" id="inv-special-1pct" placeholder="0.00" step="0.01" min="0" value="0" oninput="autoCalcUnbilled()">
+      </div>
+    </div>
+    <div class="col">
+      <div class="form-group">
+        <label>增值税专用发票（3%，放弃减税）<span class="hint"> — 含税金额</span></label>
+        <input type="number" id="inv-special-3pct" placeholder="0.00" step="0.01" min="0" value="0" oninput="autoCalcUnbilled()">
+      </div>
+    </div>
+  </div>
+
+  <h3>三、未开票收入（自动计算）</h3>
+  <div class="row" style="align-items:flex-end;">
+    <div class="col" style="max-width:220px;">
+      <div class="form-group">
+        <label>已开票合计</label>
+        <input type="text" id="invoiced-total" value="0.00" readonly>
+      </div>
+    </div>
+    <div class="col" style="max-width:auto; align-self:center; font-size:20px; color:var(--text-secondary); padding:0 4px;">=</div>
+    <div class="col" style="max-width:220px;">
+      <div class="form-group">
+        <label>合计收入</label>
+        <input type="text" id="total-revenue-display" value="0.00" readonly>
+      </div>
+    </div>
+    <div class="col" style="max-width:auto; align-self:center; font-size:20px; color:var(--text-secondary); padding:0 4px;">−</div>
+    <div class="col" style="max-width:220px;">
+      <div class="form-group">
+        <label>已开票合计</label>
+        <input type="text" id="invoiced-total-2" value="0.00" readonly>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col" style="max-width:320px;">
+      <div class="form-group">
+        <label>未开票收入（适用1%征收率）<span class="hint"> — 自动计算</span></label>
+        <input type="text" id="unbilled-1pct-display" value="0.00" readonly style="background:#fff3cd; font-weight:700; font-size:16px; color:var(--primary);">
+        <input type="hidden" id="unbilled-1pct" value="0">
+      </div>
+    </div>
+  </div>
+  <div id="unbilled-warning" style="display:none; padding:8px 14px; background:#f8d7da; border-radius:6px; color:#721c24; font-size:12px; margin-bottom:12px;"></div>
+
+  <h3>四、成本与费用</h3>
+  <div class="row">
+    <div class="col">
+      <div class="form-group">
+        <label>主营业务成本</label>
+        <input type="number" id="cost-main" placeholder="0.00" step="0.01" min="0" value="0" oninput="autoCalcStampDuty()">
+      </div>
+    </div>
+    <div class="col">
+      <div class="form-group">
+        <label>工资薪金</label>
+        <input type="number" id="exp-salary" placeholder="0.00" step="0.01" min="0" value="0">
+      </div>
+    </div>
+    <div class="col">
+      <div class="form-group">
+        <label>办公费用</label>
+        <input type="number" id="exp-admin" placeholder="0.00" step="0.01" min="0" value="0">
+      </div>
+    </div>
+    <div class="col">
+      <div class="form-group">
+        <label>平台费用</label>
+        <input type="number" id="exp-sales" placeholder="0.00" step="0.01" min="0" value="0" oninput="autoCalcStampDuty()">
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col" style="max-width:220px;">
+      <div class="form-group">
+        <label>快递费</label>
+        <input type="number" id="exp-courier" placeholder="0.00" step="0.01" min="0" value="0" oninput="autoCalcStampDuty()">
+      </div>
+    </div>
+    <div class="col" style="max-width:220px;">
+      <div class="form-group">
+        <label>社保费</label>
+        <input type="number" id="exp-social" placeholder="0.00" step="0.01" min="0" value="0">
+      </div>
+    </div>
+    <div class="col" style="max-width:220px;">
+      <div class="form-group">
+        <label>财务费用</label>
+        <input type="number" id="exp-finance" placeholder="0.00" step="0.01" min="0" value="0">
+      </div>
+    </div>
+    <div class="col" style="max-width:250px;">
+      <div class="form-group">
+        <label>其他费用</label>
+        <input type="number" id="exp-other" placeholder="0.00" step="0.01" min="0" value="0">
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col" style="max-width:250px;">
+      <div class="form-group">
+        <label style="color:var(--success);">营业外收入 <span class="hint">— 非经营性</span></label>
+        <input type="number" id="nonop-income" placeholder="0.00" step="0.01" min="0" value="0">
+      </div>
+    </div>
+    <div class="col" style="max-width:250px;">
+      <div class="form-group">
+        <label style="color:var(--primary);">营业外支出 <span class="hint">— 非经营性</span></label>
+        <input type="number" id="nonop-expense" placeholder="0.00" step="0.01" min="0" value="0">
+      </div>
+    </div>
+  </div>
+
+  <h3>五、印花税核算 <span class="hint"> — 自动从收入/成本/平台费用推算，减半征收（六税两费）</span></h3>
+  <div style="display:flex; justify-content:flex-start; gap:12px; margin:0 0 14px 0;">
+    <label id="sales-toggle" style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:linear-gradient(135deg,#1d6f42,#0e5132); color:#fff; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px; box-shadow:0 2px 6px rgba(14,81,50,0.3); white-space:nowrap;">
+      <input type="checkbox" id="sales-stamp-on" onchange="autoCalcStampDuty()" style="width:16px; height:16px; cursor:pointer; accent-color:#fff;" checked>
+      <span>购销合同（0.03%）</span>
+    </label>
+    <label id="tech-toggle" style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:linear-gradient(135deg,#1d6f42,#0e5132); color:#fff; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px; box-shadow:0 2px 6px rgba(14,81,50,0.3); white-space:nowrap;">
+      <input type="checkbox" id="platform-is-tech" onchange="autoCalcStampDuty()" style="width:16px; height:16px; cursor:pointer; accent-color:#fff;" checked>
+      <span>平台费用按技术服务合同（0.03%）</span>
+    </label>
+    <label id="transport-toggle" style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:linear-gradient(135deg,#1d6f42,#0e5132); color:#fff; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px; box-shadow:0 2px 6px rgba(14,81,50,0.3); white-space:nowrap;">
+      <input type="checkbox" id="courier-is-transport" onchange="autoCalcStampDuty()" style="width:16px; height:16px; cursor:pointer; accent-color:#fff;" checked>
+      <span>快递费按运输合同（0.03%）</span>
+    </label>
+  </div>
+  <div class="row" style="align-items:flex-end;">
+    <div class="col" style="max-width:220px;">
+      <div class="form-group">
+        <label>购销合同 0.03%<span class="hint"> — 收入含税+成本</span></label>
+        <input type="text" id="stamp-sales-display" value="0.00" readonly>
+      </div>
+    </div>
+    <div class="col" style="max-width:auto; align-self:center; font-size:18px; color:var(--text-secondary); padding:0 2px;">+</div>
+    <div class="col" style="max-width:220px;">
+      <div class="form-group">
+        <label>技术合同 0.03%<span class="hint"> — 平台费用</span></label>
+        <input type="text" id="stamp-tech-display" value="0.00" readonly>
+      </div>
+    </div>
+    <div class="col" style="max-width:auto; align-self:center; font-size:18px; color:var(--text-secondary); padding:0 2px;">+</div>
+    <div class="col" style="max-width:220px;">
+      <div class="form-group">
+        <label>运输合同 0.03%<span class="hint"> — 快递费</span></label>
+        <input type="text" id="stamp-transport-display" value="0.00" readonly>
+      </div>
+    </div>
+    <div class="col" style="max-width:200px;">
+      <div class="form-group">
+        <label>其他合同印花税<span class="hint"> — 1‰/0.5‰等</span></label>
+        <input type="number" id="stamp-other" placeholder="0.00" step="0.01" min="0" value="0" oninput="autoCalcStampDuty()">
+      </div>
+    </div>
+    <div class="col" style="max-width:auto; align-self:center; font-size:18px; color:var(--text-secondary); padding:0 2px;">=</div>
+    <div class="col" style="max-width:200px;">
+      <div class="form-group">
+        <label>小计</label>
+        <input type="text" id="stamp-subtotal" value="0.00" readonly>
+      </div>
+    </div>
+    <div class="col" style="max-width:auto; align-self:center; font-size:18px; color:var(--text-secondary); padding:0 2px;">×50%</div>
+    <div class="col" style="max-width:220px;">
+      <div class="form-group">
+        <label>应纳印花税（六税两费减半）</label>
+        <input type="text" id="stamp-duty-display" value="0.00" readonly style="background:#fff3cd; font-weight:700; font-size:16px; color:var(--primary);">
+        <input type="hidden" id="stamp-duty" value="0">
+      </div>
+    </div>
+  </div>
+
+  <div class="action-bar">
+    <button class="btn btn-primary" onclick="calculate()">生成凭证 & 申报表</button>
+    <button class="btn btn-outline" onclick="clearAll()">清空重填</button>
+    <button class="btn btn-accent btn-sm" onclick="loadExample(1)">加载示例1：纯免税</button>
+    <button class="btn btn-accent btn-sm" onclick="loadExample(2)">加载示例2：超30万全额</button>
+    <button class="btn btn-accent btn-sm" onclick="loadExample(3)">加载示例3：普票免税+专票</button>
+  </div>
+  </div>
+</div>
+
+<!-- ============ 结果区 ============ -->
+<div id="result-area" class="card result-section hidden">
+  <h2>计算结果</h2>
+
+  <!-- 摘要 -->
+  <div class="summary-grid" id="summary-grid"></div>
+
+  <!-- 判定提示 -->
+  <div id="verdict-bar"></div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('tab-entries', this)">记账凭证</div>
+    <div class="tab" onclick="switchTab('tab-declaration', this)">增值税申报表</div>
+    <div class="tab" onclick="switchTab('tab-profit', this)">利润表与所得税</div>
+  </div>
+
+  <!-- 凭证 Tab -->
+  <div id="tab-entries" class="tab-content active"></div>
+
+  <!-- 申报表 Tab -->
+  <div id="tab-declaration" class="tab-content"></div>
+
+  <!-- 利润表 Tab -->
+  <div id="tab-profit" class="tab-content"></div>
+</div>
+
+<div id="empty-hint" class="card">
+  <div class="empty-hint">请在上方填入开票和未开票数据后，点击「生成凭证 & 申报表」</div>
+</div>
+
+</div>
+
+<script>
+// ============ 核心计算逻辑 ============
+function getInput(name) { return parseFloat(document.getElementById(name).value) || 0; }
+
+// 自动计算未开票收入
+function autoCalcUnbilled() {
+  const totalRev = getInput('total-revenue');
+  const invNormal1 = getInput('inv-normal-1pct');
+  const invSpecial1 = getInput('inv-special-1pct');
+  const invSpecial3 = getInput('inv-special-3pct');
+  const invoicedSum = invNormal1 + invSpecial1 + invSpecial3;
+  const unbilled = Math.max(0, parseFloat((totalRev - invoicedSum).toFixed(2)));
+
+  // 更新显示
+  document.getElementById('invoiced-total').value = fmt(invoicedSum);
+  document.getElementById('total-revenue-display').value = fmt(totalRev);
+  document.getElementById('invoiced-total-2').value = fmt(invoicedSum);
+  document.getElementById('unbilled-1pct-display').value = fmt(unbilled);
+  document.getElementById('unbilled-1pct').value = unbilled;
+
+  // 负数警告
+  const warnEl = document.getElementById('unbilled-warning');
+  if (totalRev > 0 && unbilled <= 0 && invoicedSum > 0) {
+    warnEl.style.display = 'block';
+    warnEl.innerHTML = `⚠️ 已开票合计 ¥${fmt(invoicedSum)} 已超过合计收入 ¥${fmt(totalRev)}，请核对数据。差额 ¥${fmt(invoicedSum - totalRev)}。`;
+  } else {
+    warnEl.style.display = 'none';
+  }
+}
+
+// 自动计算印花税
+function autoCalcStampDuty() {
+  const totalRev = getInput('total-revenue');
+  const costMain = getInput('cost-main');
+  const expSales = getInput('exp-sales');     // 平台费用
+  const expCourier = getInput('exp-courier'); // 快递费
+  const stampOther = getInput('stamp-other');
+  const salesOn = document.getElementById('sales-stamp-on').checked;
+  const platformIsTech = document.getElementById('platform-is-tech').checked;
+  const courierIsTransport = document.getElementById('courier-is-transport').checked;
+
+  // 购销合同：0.03%（基数为收入含税+成本），受开关控制
+  const stampSales = salesOn ? parseFloat(((totalRev + costMain) * 0.0003).toFixed(2)) : 0;
+  // 技术合同：0.03%（仅勾选时按平台费用）
+  const stampTech = platformIsTech ? parseFloat((expSales * 0.0003).toFixed(2)) : 0;
+  // 运输合同：0.03%（仅勾选时按快递费）
+  const stampTransport = courierIsTransport ? parseFloat((expCourier * 0.0003).toFixed(2)) : 0;
+
+  const stampSubtotal = parseFloat((stampSales + stampTech + stampTransport + stampOther).toFixed(2));
+  const stampDuty = parseFloat((stampSubtotal * 0.5).toFixed(2));  // 六税两费减半
+
+  document.getElementById('stamp-sales-display').value = fmt(stampSales);
+  const techEl = document.getElementById('stamp-tech-display');
+  if (techEl) techEl.value = fmt(stampTech);
+  const transportEl = document.getElementById('stamp-transport-display');
+  if (transportEl) transportEl.value = fmt(stampTransport);
+  document.getElementById('stamp-subtotal').value = fmt(stampSubtotal);
+  document.getElementById('stamp-duty-display').value = fmt(stampDuty);
+  document.getElementById('stamp-duty').value = stampDuty;
+}
+
+function calculate() {
+  // 先刷新未开票和印花税
+  autoCalcUnbilled();
+  autoCalcStampDuty();
+
+  // 读取输入（均为含税金额）
+  const invNormal1 = getInput('inv-normal-1pct');      // 普票 1%
+  const invSpecial1 = getInput('inv-special-1pct');    // 专票 1%
+  const invSpecial3 = getInput('inv-special-3pct');    // 专票 3%（放弃减税）
+  const unbilled1 = getInput('unbilled-1pct');         // 未开票 1%（自动计算）
+
+  // 不含税转换
+  const taxExcl = (amt, rate) => amt / (1 + rate);
+  const taxAmt = (amt, rate) => amt - taxExcl(amt, rate);
+
+  // 1% 部分：普票+专票1%+未开票
+  const totalIncl1 = invNormal1 + invSpecial1 + unbilled1;
+  const totalExcl1 = taxExcl(totalIncl1, 0.01);
+  const totalTax1 = taxAmt(totalIncl1, 0.01);
+
+  // 3% 专票部分
+  const totalExcl3 = taxExcl(invSpecial3, 0.03);
+  const totalTax3 = taxAmt(invSpecial3, 0.03);
+
+  // 普票不含税 + 未开票不含税（用于判定起征点）
+  const normalExcl1 = taxExcl(invNormal1, 0.01);
+  const unbilledExcl1 = taxExcl(unbilled1, 0.01);
+  const judgeBase = normalExcl1 + unbilledExcl1;  // 普票+未开票 不含税
+  const specialExcl1 = taxExcl(invSpecial1, 0.01); // 专票1%不含税
+
+  // 全部不含税
+  const allExcl = totalExcl1 + totalExcl3;
+
+  // 起征点：按季30万 / 按月10万
+  const periodType = document.getElementById('period-type').value;
+  const threshold = periodType === 'quarter' ? 300000 : 100000;
+
+  // 判定
+  const isExempt = judgeBase < threshold;  // 普票+未开票部分是否免税
+  const exemptBase = isExempt ? judgeBase : 0;
+  const exemptTax = isExempt ? taxAmt(invNormal1 + unbilled1, 0.01) : 0;
+
+  // 应纳税额计算
+  // 普票+未开票部分：免税则税额0，否则按1%
+  const payableTaxNormal = isExempt ? 0 : taxAmt(invNormal1 + unbilled1, 0.01);
+  // 专票1%：永远缴税
+  const payableTaxSpecial1 = taxAmt(invSpecial1, 0.01);
+  // 专票3%：永远缴税
+  const payableTaxSpecial3 = totalTax3;
+
+  const totalPayable = payableTaxNormal + payableTaxSpecial1 + payableTaxSpecial3;
+
+  // 减征额（3%→1% 的 2% 差额）
+  const reductionBase = isExempt ? specialExcl1 : (judgeBase + specialExcl1);
+  const reductionAmt = parseFloat((reductionBase * 0.02).toFixed(2));
+
+  // 实际应补税额 = 应纳税额 - 减征额（不为负）
+  const finalPayable = Math.max(0, parseFloat((totalPayable - reductionAmt).toFixed(2)));
+
+  // 附加税（减半征收）— 暂时占位，待 row22_num 算出后覆盖
+  let urbanTax = 0, eduSurcharge = 0, localEduSurcharge = 0, totalSurcharge = 0;
+
+  // 印花税（六税两费减半）
+  const stampDuty = getInput('stamp-duty');
+  // 税金及附加合计 = 附加税 + 印花税（totalSurcharge 后续覆盖）
+  let totalTaxAndSurcharge = stampDuty;
+
+  // ============ 渲染摘要 ============
+  document.getElementById('summary-grid').innerHTML = `
+    <div class="summary-item">
+      <div class="val">¥${fmt(totalExcl1)}</div>
+      <div class="lbl">不含税销售额（1%部分）</div>
+    </div>
+    <div class="summary-item">
+      <div class="val ${isExempt ? 'green' : ''}">${isExempt ? '免税' : '全额缴税'}</div>
+      <div class="lbl">普票+未开票判定</div>
+    </div>
+  `;
+
+  // 判定提示
+  const verdictText = isExempt
+    ? `普票+未开票不含税 ¥${fmt(judgeBase)} < 起征点 ¥${fmt(threshold)} → <span class="tag tag-exempt">免税</span>（专票部分仍需缴税）`
+    : `普票+未开票不含税 ¥${fmt(judgeBase)} ≥ 起征点 ¥${fmt(threshold)} → <span class="tag tag-pay">全额缴税</span>（2026新政：达到起征点全额征收）`;
+
+  document.getElementById('verdict-bar').innerHTML = `<div class="compare-note">${verdictText}</div>`;
+
+  // ============ 凭证生成 ============
+  let entriesHtml = '';
+
+  // 普票收入
+  if (invNormal1 > 0) {
+    const excl = taxExcl(invNormal1, 0.01);
+    const tax = taxAmt(invNormal1, 0.01);
+    entriesHtml += entryBlock('普通发票收入（1%）', [
+      {dr: `银行存款 / 应收账款`, amt: invNormal1, side:'dr'},
+      {dr: '', amt: excl, side:'cr', account: '主营业务收入'},
+      {dr: '', amt: tax, side:'cr', account: '应交税费——应交增值税'},
+    ]);
+  }
+
+  // 专票1%
+  if (invSpecial1 > 0) {
+    const excl = taxExcl(invSpecial1, 0.01);
+    const tax = taxAmt(invSpecial1, 0.01);
+    entriesHtml += entryBlock('专用发票收入（1%）', [
+      {dr: `银行存款 / 应收账款`, amt: invSpecial1, side:'dr'},
+      {dr: '', amt: excl, side:'cr', account: '主营业务收入'},
+      {dr: '', amt: tax, side:'cr', account: '应交税费——应交增值税'},
+    ]);
+  }
+
+  // 专票3%
+  if (invSpecial3 > 0) {
+    entriesHtml += entryBlock('专用发票收入（3%，放弃减税）', [
+      {dr: `银行存款 / 应收账款`, amt: invSpecial3, side:'dr'},
+      {dr: '', amt: totalExcl3, side:'cr', account: '主营业务收入'},
+      {dr: '', amt: totalTax3, side:'cr', account: '应交税费——应交增值税'},
+    ]);
+  }
+
+  // 未开票
+  if (unbilled1 > 0) {
+    const excl = taxExcl(unbilled1, 0.01);
+    const tax = taxAmt(unbilled1, 0.01);
+    entriesHtml += entryBlock('未开票收入（1%）', [
+      {dr: `银行存款 / 应收账款`, amt: unbilled1, side:'dr'},
+      {dr: '', amt: excl, side:'cr', account: '主营业务收入（未开票）'},
+      {dr: '', amt: tax, side:'cr', account: '应交税费——应交增值税'},
+    ]);
+  }
+
+  // 季末结转 / 缴税
+  if (isExempt && exemptTax > 0) {
+    entriesHtml += `
+<div style="margin-top:16px; padding:12px; background:#e8f8f5; border-radius:6px; border-left:3px solid var(--green);">
+  <strong style="color:var(--green);">▶ 季末结转 — 免税部分转入其他收益</strong>
+</div>`;
+    entriesHtml += entryBlock('普票+未开票部分免税结转', [
+      {dr: `应交税费——应交增值税`, amt: exemptTax, side:'dr'},
+      {dr: '', amt: exemptTax, side:'cr', account: '其他收益'},
+    ]);
+  }
+
+  if (totalPayable > 0 && finalPayable > 0) {
+    const taxableTax = isExempt ? (payableTaxSpecial1 + payableTaxSpecial3) : totalPayable;
+    entriesHtml += `
+<div style="margin-top:16px; padding:12px; background:#fdf0ee; border-radius:6px; border-left:3px solid var(--primary);">
+  <strong style="color:var(--primary);">▶ 缴纳增值税</strong>
+</div>`;
+    entriesHtml += entryBlock('缴纳增值税', [
+      {dr: `应交税费——应交增值税`, amt: taxableTax, side:'dr'},
+      {dr: '', amt: finalPayable, side:'cr', account: '银行存款'},
+    ]);
+  }
+
+  if (totalSurcharge > 0) {
+    entriesHtml += entryBlock('计提税金及附加（减半征收）', [
+      {dr: `税金及附加`, amt: totalSurcharge, side:'dr'},
+      {dr: '', amt: urbanTax, side:'cr', account: '应交税费——应交城市维护建设税'},
+      {dr: '', amt: eduSurcharge, side:'cr', account: '应交税费——应交教育费附加'},
+      {dr: '', amt: localEduSurcharge, side:'cr', account: '应交税费——应交地方教育附加'},
+    ]);
+  }
+
+  if (entriesHtml === '') {
+    entriesHtml = '<p style="color:var(--text-secondary); padding:20px;">暂无数据，请填入开票/未开票金额。</p>';
+  }
+
+  document.getElementById('tab-entries').innerHTML = entriesHtml;
+
+  // ============ 申报表（按真实申报表栏次） ============
+  // 关键：第15行=按3%口径算的应纳税额，第16行=应税不含税×2%（减征）
+  // 第17行=免税销售额×3%（免税额）
+  const taxSalesSpecial1 = parseFloat(specialExcl1.toFixed(2));   // 专票1%不含税
+  const taxSales3 = parseFloat(totalExcl3.toFixed(2));             // 专票3%不含税
+  const taxSalesNormal = parseFloat(((isExempt ? 0 : (normalExcl1 + unbilledExcl1))).toFixed(2)); // 应税普票+未开票
+  const exemptBase1 = parseFloat(judgeBase.toFixed(2));            // 免税销售额（普票+未开票不含税）
+
+  // 行1：3%征收率 应税销售额合计（专票+应税普票未开票）
+  const row1_goods = parseFloat((taxSalesNormal + taxSalesSpecial1 + taxSales3).toFixed(2));
+  const row1_service = 0;
+  // 行2：专票不含税
+  const row2 = parseFloat((taxSalesSpecial1 + taxSales3).toFixed(2));
+  // 行3：其他发票（普票+未开票）
+  const row3 = taxSalesNormal;
+
+  const row9 = isExempt ? exemptBase1.toFixed(2) : '0.00';
+  const row10 = isExempt ? exemptBase1.toFixed(2) : '0.00';
+
+  // 关键：行15 = 应税不含税 × 3% （按3%口径），而不是按1%
+  // 应税不含税 = 专票1% + 专票3% + 应税普票
+  const taxableTotal = taxSalesSpecial1 + taxSales3 + taxSalesNormal;
+  const row15_num = parseFloat((taxableTotal * 0.03).toFixed(2));
+  const row15 = row15_num.toFixed(2);
+  // 行16 = 应税不含税 × 2% （3%→1%的减征）
+  const row16_num = parseFloat((taxableTotal * 0.02).toFixed(2));
+  const row16 = row16_num.toFixed(2);
+  // 行17 = 免税销售额 × 3%
+  const row17 = isExempt ? parseFloat((exemptBase1 * 0.03).toFixed(2)).toFixed(2) : '0.00';
+  const row18 = row17;
+  const row19 = '0.00';
+  // 行20 = 行15 - 行16
+  const row20_num = parseFloat((row15_num - row16_num).toFixed(2));
+  const row20 = row20_num.toFixed(2);
+  const row21 = '0.00';
+  // 行22 = 行20 - 行21（不应为负）
+  // 行22 = 行20 - 行21 = (行15-行16) - 预缴
+  // 行15=应税×3%，行16=应税×2%，行22=应税×1%=实际应缴增值税
+  const row22_num = parseFloat((row20_num - parseFloat(row21)).toFixed(2));
+  const row22 = row22_num.toFixed(2);
+
+  // 附加税费：按行22（本期应补退税额）计算，×50% 减半
+  urbanTax = parseFloat((row22_num * 0.07 * 0.5).toFixed(2));
+  eduSurcharge = parseFloat((row22_num * 0.03 * 0.5).toFixed(2));
+  localEduSurcharge = parseFloat((row22_num * 0.02 * 0.5).toFixed(2));
+  totalSurcharge = parseFloat((urbanTax + eduSurcharge + localEduSurcharge).toFixed(2));
+  totalTaxAndSurcharge = parseFloat((totalSurcharge + stampDuty).toFixed(2));
+
+  const row23 = urbanTax.toFixed(2);
+  const row24 = eduSurcharge.toFixed(2);
+  const row25 = localEduSurcharge.toFixed(2);
+
+  // 补充摘要
+  document.getElementById('summary-grid').innerHTML += `
+    <div class="summary-item">
+      <div class="val">¥${fmt(row15_num)}</div>
+      <div class="lbl">应纳税额（法定3%）=行15</div>
+    </div>
+    <div class="summary-item">
+      <div class="val">¥${fmt(row16_num)}</div>
+      <div class="lbl">减征额（3%→1%）=行16</div>
+    </div>
+    <div class="summary-item">
+      <div class="val">¥${fmt(row22_num)}</div>
+      <div class="lbl">本期应补退税额=行22</div>
+    </div>
+    <div class="summary-item">
+      <div class="val">¥${fmt(totalTaxAndSurcharge)}</div>
+      <div class="lbl">税金及附加合计</div>
+    </div>
+  `;
+
+  // 货物/服务两列分别填
+  const r_goods = (v) => v;          // 货物及劳务列
+  const r_service = (v) => isExempt && v === row9 ? '0.00' : '0.00';  // 服务列（本工具简化）
+
+  document.getElementById('tab-declaration').innerHTML = `
+<div style="overflow-x:auto;">
+<table class="declaration-table" style="font-size:12px;">
+  <thead>
+    <tr><th>栏次</th><th>项目</th><th>货物及劳务（本期）</th><th>服务、不动产和无形资产（本期）</th><th>货物及劳务（本年累计）</th><th>服务、不动产和无形资产（本年累计）</th></tr>
+  </thead>
+  <tbody>
+    <tr style="background:#f0f4ff; font-weight:700;">
+      <td colspan="6">一、计税依据</td>
+    </tr>
+    <tr>
+      <td>1</td><td class="row-label">（一）应征增值税不含税销售额（3%征收率）</td>
+      <td>${row1_goods.toFixed(2)}</td><td>0.00</td><td>${row1_goods.toFixed(2)}</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>2</td><td class="row-indent">增值税专用发票不含税销售额</td>
+      <td>${row2.toFixed(2)}</td><td>0.00</td><td>${row2.toFixed(2)}</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>3</td><td class="row-indent">其他增值税发票不含税销售额</td>
+      <td>${row3.toFixed(2)}</td><td>0.00</td><td>${row3.toFixed(2)}</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>4</td><td class="row-label">（二）应征增值税不含税销售额（5%征收率）</td>
+      <td>0.00</td><td>0.00</td><td>0.00</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>5</td><td class="row-indent">增值税专用发票不含税销售额</td>
+      <td>0.00</td><td>0.00</td><td>0.00</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>6</td><td class="row-indent">其他增值税发票不含税销售额</td>
+      <td>0.00</td><td>0.00</td><td>0.00</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>7(7≥8)</td><td class="row-label">（三）销售使用过的固定资产不含税销售额</td>
+      <td>0.00</td><td>——</td><td>0.00</td><td>——</td>
+    </tr>
+    <tr>
+      <td>8</td><td class="row-indent">其中：其他增值税发票不含税销售额</td>
+      <td>0.00</td><td>——</td><td>0.00</td><td>——</td>
+    </tr>
+    <tr>
+      <td>9=10+11+12</td><td class="row-label">（四）免税销售额</td>
+      <td>${row9}</td><td>0.00</td><td>${row9}</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>10</td><td class="row-indent">其中：小微企业免税销售额</td>
+      <td>${row10}</td><td>0.00</td><td>${row10}</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>11</td><td class="row-indent">未达起征点销售额</td>
+      <td>0.00</td><td>0.00</td><td>0.00</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>12</td><td class="row-indent">其他免税销售额</td>
+      <td>0.00</td><td>0.00</td><td>0.00</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>13(13≥14)</td><td class="row-label">（五）出口免税销售额</td>
+      <td>0.00</td><td>0.00</td><td>0.00</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>14</td><td class="row-indent">其中：其他增值税发票不含税销售额</td>
+      <td>0.00</td><td>0.00</td><td>0.00</td><td>0.00</td>
+    </tr>
+    <tr style="background:#fff8f0; font-weight:700;">
+      <td colspan="6">二、税款计算</td>
+    </tr>
+    <tr>
+      <td>15</td><td class="row-label">本期应纳税额</td>
+      <td>${row15}</td><td>0.00</td><td>${row15}</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>16</td><td class="row-label">本期应纳税额减征额</td>
+      <td>${row16}</td><td>0.00</td><td>${row16}</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>17</td><td class="row-label">本期免税额</td>
+      <td>${row17}</td><td>0.00</td><td>${row17}</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>18</td><td class="row-indent">其中：小微企业免税额</td>
+      <td>${row18}</td><td>0.00</td><td>${row18}</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>19</td><td class="row-indent">未达起征点免税额</td>
+      <td>${row19}</td><td>0.00</td><td>${row19}</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>20=15-16</td><td class="row-label">应纳税额合计</td>
+      <td>${row20}</td><td>0.00</td><td>${row20}</td><td>0.00</td>
+    </tr>
+    <tr>
+      <td>21</td><td class="row-label">本期预缴税额</td>
+      <td>${row21}</td><td>0.00</td><td>${row21}</td><td>0.00</td>
+    </tr>
+    <tr class="highlight-row">
+      <td>22=20-21</td><td class="row-label"><strong>本期应补（退）税额</strong></td>
+      <td><strong>${row22}</strong></td><td>——</td><td><strong>${row22}</strong></td><td>——</td>
+    </tr>
+    <tr style="background:#fff8f0; font-weight:700;">
+      <td colspan="6">三、附加税费</td>
+    </tr>
+    <tr><td>23</td><td class="row-label">城市维护建设税本期应补（退）税额</td><td>${row23}</td><td>0.00</td><td>${row23}</td><td>0.00</td></tr>
+    <tr><td>24</td><td class="row-label">教育费附加本期应补（退）税额</td><td>${row24}</td><td>0.00</td><td>${row24}</td><td>0.00</td></tr>
+    <tr><td>25</td><td class="row-label">地方教育附加本期应补（退）税额</td><td>${row25}</td><td>0.00</td><td>${row25}</td><td>0.00</td></tr>
+    <tr style="background:#fff3cd;">
+      <td>—</td><td class="row-label">印花税（购销+技术+运输+其他，减半征收）</td>
+      <td><strong>${stampDuty.toFixed(2)}</strong></td><td>六税两费减半</td>
+    </tr>
+    <tr><td>—</td><td class="row-label"><strong>税金及附加合计</strong></td><td><strong>${totalTaxAndSurcharge.toFixed(2)}</strong></td><td>${totalSurcharge > 0 ? '附加税 + 印花税' : '仅印花税（附加税因应补退税额为0而无需计提）'}</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="secondary" style="margin-top:10px;">※ 未开票收入在申报时填入「未开票收入」对应栏次，次期开票后做负数冲减。</p>
+`;
+
+  // ============ 利润表与所得税 ============
+  const costMain = getInput('cost-main');
+  const expSalary = getInput('exp-salary');
+  const expAdmin = getInput('exp-admin');
+  const expSales = getInput('exp-sales');
+  const expFinance = getInput('exp-finance');
+  const expOther = getInput('exp-other');
+  const expCourier = getInput('exp-courier');   // 快递费 → 平台费用
+  const expSocial = getInput('exp-social');     // 社保费 → 办公费用
+
+  const revenueNet = allExcl;  // 不含税收入
+  const grossProfit = parseFloat((revenueNet - costMain).toFixed(2));
+  const salesExpTotal = expSales + expCourier;       // 平台费用 = 平台 + 快递
+  const adminExpTotal = expAdmin + expSalary + expSocial;  // 办公费用 = 办公 + 工资 + 社保
+  const totalExpenses = adminExpTotal + salesExpTotal + expFinance + expOther;
+  // 免税部分转其他收益（按实际结转金额计入利润表）
+  const otherIncome = parseFloat((isExempt ? exemptTax : 0).toFixed(2));
+  const nonopIncome = getInput('nonop-income');
+  const nonopExpense = getInput('nonop-expense');
+  const operatingProfit = parseFloat((grossProfit - totalTaxAndSurcharge - totalExpenses + otherIncome).toFixed(2));
+  // 利润总额 = 营业利润 + 营业外收入 - 营业外支出
+  const totalProfit = parseFloat((operatingProfit + nonopIncome - nonopExpense).toFixed(2));
+
+  // 所得税：小微企业优惠
+  // 季报时年化判断：季度利润 × 4（简化处理）
+  const annualizedProfit = totalProfit * (periodType === 'quarter' ? 4 : 12);
+  const smallBizThreshold = 3000000;  // 年应纳税所得额 ≤ 300万
+  const isSmallBiz = annualizedProfit > 0 && annualizedProfit <= smallBizThreshold;
+  const incomeTaxRate = isSmallBiz ? 0.05 : 0.25;
+  const incomeTax = Math.max(0, parseFloat((totalProfit * incomeTaxRate).toFixed(2)));
+  const netProfit = parseFloat((totalProfit - incomeTax).toFixed(2));
+
+  // 税金及附加凭证（附加税复合分录 + 印花税）
+  let profitEntriesHtml = '';
+  if (totalSurcharge > 0) {
+    profitEntriesHtml += entryBlock('计提税金及附加（减半征收）', [
+      {dr: '税金及附加', amt: totalSurcharge, side:'dr'},
+      {dr: '', amt: urbanTax, side:'cr', account: '应交税费——应交城市维护建设税'},
+      {dr: '', amt: eduSurcharge, side:'cr', account: '应交税费——应交教育费附加'},
+      {dr: '', amt: localEduSurcharge, side:'cr', account: '应交税费——应交地方教育附加'},
+    ]);
+  }
+  if (stampDuty > 0) {
+    profitEntriesHtml += entryBlock('计提印花税（购销+技术+运输+其他，减半征收）', [
+      {dr: '税金及附加', amt: stampDuty, side:'dr'},
+      {dr: '', amt: stampDuty, side:'cr', account: '应交税费——应交印花税'},
+    ]);
+  }
+  if (totalProfit > 0 && incomeTax > 0) {
+    profitEntriesHtml += entryBlock('计提所得税费用', [
+      {dr: '所得税费用', amt: incomeTax, side:'dr'},
+      {dr: '', amt: incomeTax, side:'cr', account: '应交税费——应交企业所得税'},
+    ]);
+  }
+  if (netProfit !== 0) {
+    profitEntriesHtml += entryBlock('结转本年利润', [
+      {dr: '主营业务收入等', amt: revenueNet, side:'dr'},
+      {dr: '', amt: costMain + totalTaxAndSurcharge + totalExpenses + incomeTax, side:'cr', account: '成本、税金、费用、所得税'},
+      {dr: '', amt: netProfit, side:'cr', account: '本年利润' + (netProfit < 0 ? '（亏损）' : '')},
+    ]);
+  }
+
+  document.getElementById('tab-profit').innerHTML = `
+<div style="overflow-x:auto;">
+<table class="declaration-table">
+  <thead>
+    <tr><th>项目</th><th>行次</th><th>本期金额</th><th>计算说明</th></tr>
+  </thead>
+  <tbody>
+    <tr style="background:#f0f4ff; font-weight:700;">
+      <td colspan="4">一、营业收入</td>
+    </tr>
+    <tr>
+      <td class="row-label">营业收入</td><td>1</td>
+      <td>${fmt(revenueNet)}</td><td>= 全部不含税销售额</td>
+    </tr>
+    <tr>
+      <td class="row-label">减：营业成本</td><td>2</td>
+      <td>${fmt(costMain)}</td><td>主营业务成本</td>
+    </tr>
+    <tr>
+      <td class="row-label"><strong>毛利</strong></td><td>—</td>
+      <td><strong>${fmt(grossProfit)}</strong></td>
+      <td>= 收入 - 成本</td>
+    </tr>
+    <tr>
+      <td class="row-label">减：税金及附加</td><td>3</td>
+      <td>${fmt(totalTaxAndSurcharge)}</td><td>附加税 ¥${fmt(totalSurcharge)} + 印花税 ¥${fmt(stampDuty)}</td>
+    </tr>
+    <tr>
+      <td class="row-label">减：管理费用</td><td>4</td>
+      <td>${fmt(adminExpTotal)}</td><td>办公 ¥${fmt(expAdmin)} + 工资 ¥${fmt(expSalary)} + 社保 ¥${fmt(expSocial)}</td>
+    </tr>
+    <tr>
+      <td class="row-label">减：销售费用</td><td>5</td>
+      <td>${fmt(salesExpTotal)}</td><td>平台 ¥${fmt(expSales)} + 快递 ¥${fmt(expCourier)}</td>
+    </tr>
+    <tr>
+      <td class="row-label">减：财务费用</td><td>6</td>
+      <td>${fmt(expFinance)}</td><td></td>
+    </tr>
+    ${expOther > 0 ? `<tr><td class="row-label">减：其他费用</td><td>7</td><td>${fmt(expOther)}</td><td></td></tr>` : ''}
+    <tr class="row-subtotal">
+      <td class="row-label">加：其他收益（免税结转）</td><td>—</td>
+      <td>${fmt(otherIncome)}</td><td>免税额转入</td>
+    </tr>
+    <tr style="background:#fff8f0; font-weight:700;">
+      <td class="row-label"><strong>营业利润</strong></td><td>—</td>
+      <td><strong style="color:${operatingProfit >= 0 ? 'var(--primary)' : 'var(--green)'}">${fmt(operatingProfit)}</strong></td>
+      <td>= 毛利 - 税金 - 各项费用</td>
+    </tr>
+    ${nonopIncome > 0 ? `<tr><td class="row-label" style="color:var(--success);">加：营业外收入</td><td>—</td><td style="color:var(--success);">${fmt(nonopIncome)}</td><td>非经营性收入</td></tr>` : ''}
+    ${nonopExpense > 0 ? `<tr><td class="row-label" style="color:var(--primary);">减：营业外支出</td><td>—</td><td style="color:var(--primary);">${fmt(nonopExpense)}</td><td>非经营性支出</td></tr>` : ''}
+    <tr class="highlight-row">
+      <td class="row-label"><strong>利润总额</strong></td><td>—</td>
+      <td><strong style="font-size:16px; color:${totalProfit >= 0 ? 'var(--primary)' : 'var(--green)'}">${fmt(totalProfit)}</strong></td>
+      <td>= 营业利润 + 营业外收入 - 营业外支出</td>
+    </tr>
+    <tr style="background:#f0fff4; font-weight:700;">
+      <td colspan="4">二、所得税计算</td>
+    </tr>
+    <tr>
+      <td class="row-label">年化应纳税所得额</td><td>—</td>
+      <td>${fmt(annualizedProfit)}</td>
+      <td>= 利润总额 × ${periodType === 'quarter' ? '4（季报年化）' : '12（月报年化）'}</td>
+    </tr>
+    <tr>
+      <td class="row-label">小微企业判定</td><td>—</td>
+      <td>${isSmallBiz ? '<span class="tag tag-exempt">是</span>' : (totalProfit <= 0 ? '<span class="tag">不适用</span>' : '<span class="tag tag-pay">否</span>')}</td>
+      <td>${isSmallBiz ? '年所得 ≤ 300万，适用优惠' : (totalProfit <= 0 ? '亏损，无需缴纳' : '超过300万，按25%')}</td>
+    </tr>
+    <tr>
+      <td class="row-label">适用税率</td><td>—</td>
+      <td><strong>${(incomeTaxRate * 100).toFixed(0)}%</strong></td>
+      <td>${isSmallBiz ? '小微企业：减按25%×20% = 实际5%' : '法定税率25%'}</td>
+    </tr>
+    <tr class="highlight-row">
+      <td class="row-label"><strong>本期应纳所得税额</strong></td><td>—</td>
+      <td><strong style="font-size:16px">${fmt(incomeTax)}</strong></td>
+      <td>= 利润总额 × ${(incomeTaxRate * 100).toFixed(0)}%</td>
+    </tr>
+    <tr style="background:#e8f8f5;">
+      <td class="row-label"><strong>净利润</strong></td><td>—</td>
+      <td><strong style="font-size:16px; color:${netProfit >= 0 ? 'var(--primary)' : 'var(--green)'}">${fmt(netProfit)}</strong></td>
+      <td>= 利润总额 - 所得税</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p class="secondary" style="margin-top:8px;">※ 小微企业标准：年应纳税所得额 ≤ 300万元、从业人数 ≤ 300人、资产总额 ≤ 5000万元。<br>※ 季报时按利润总额 × 4 年化判断是否符合小微条件，实际税率 5%（减按25%计入应纳税所得额×20%税率）。</p>
+<div style="margin-top:16px;">
+  <div style="font-weight:700; color:var(--text-secondary); font-size:13px; margin-bottom:8px;">相关记账凭证</div>
+  ${profitEntriesHtml || '<p class="secondary">无成本费用数据。</p>'}
+</div>
+`;
+
+  // 显示结果区
+  document.getElementById('result-area').classList.remove('hidden');
+  document.getElementById('empty-hint').style.display = 'none';
+
+  // 滚动到结果
+  document.getElementById('result-area').scrollIntoView({behavior:'smooth', block:'start'});
+
+  // 存储数据用于导出
+  window.taxData = {
+    periodType, threshold,
+    totalRev: getInput('total-revenue'),
+    invNormal1, invSpecial1, invSpecial3, unbilled1,
+    totalExcl1, totalExcl3, allExcl,
+    judgeBase, isExempt, exemptTax,
+    totalPayable, reductionAmt, finalPayable,
+    row15_num, row16_num, row22_num,
+    urbanTax, eduSurcharge, localEduSurcharge, totalSurcharge,
+    stampSales: parseFloat(document.getElementById('stamp-sales-display').value.replace(/,/g,'')) || 0,
+    stampTech: parseFloat((document.getElementById('stamp-tech-display') || {value:'0'}).value.replace(/,/g,'')) || 0,
+    stampTransport: parseFloat((document.getElementById('stamp-transport-display') || {value:'0'}).value.replace(/,/g,'')) || 0,
+    platformIsTech: document.getElementById('platform-is-tech').checked,
+    courierIsTransport: document.getElementById('courier-is-transport').checked,
+    salesStampOn: document.getElementById('sales-stamp-on').checked,
+    stampOther: getInput('stamp-other'),
+    stampSubtotal: parseFloat(document.getElementById('stamp-subtotal').value.replace(/,/g,'')) || 0,
+    stampDuty,
+    totalTaxAndSurcharge,
+    revenueNet: parseFloat(allExcl.toFixed(2)),
+    grossProfit: parseFloat((parseFloat(allExcl.toFixed(2)) - parseFloat(getInput('cost-main') || 0)).toFixed(2)),
+    costMain: getInput('cost-main'),
+    expSalary, expAdmin, expSales, expFinance, expOther, expCourier, expSocial,
+    salesExpTotal, adminExpTotal,
+    totalExpenses,
+    otherIncome, operatingProfit, nonopIncome, nonopExpense, totalProfit,
+    annualizedProfit,
+    isSmallBiz: isSmallBiz, incomeTaxRate: incomeTaxRate,
+    incomeTax: (typeof incomeTax === 'number' && !isNaN(incomeTax)) ? incomeTax : 0,
+    netProfit: (typeof netProfit === 'number' && !isNaN(netProfit)) ? netProfit : 0
+  };
+}
+
+// ============ 凭证分录模板 ============
+function entryBlock(title, rows) {
+  let html = `<div style="margin-bottom:14px;">
+    <div style="font-weight:700; color:var(--text-secondary); font-size:12px; margin-bottom:6px;">${title}</div>
+    <div class="entry-box">`;
+  rows.forEach((r, i) => {
+    if (r.side === 'dr') {
+      html += `<span class="debit">借：${r.dr.padEnd(28)}</span>  <span>${fmt(r.amt).padStart(12)}</span>\n`;
+    } else {
+      html += `    <span class="credit">贷：${(r.account || '').padEnd(28)}</span>  <span>${fmt(r.amt).padStart(12)}</span>\n`;
+    }
+  });
+  html += `</div></div>`;
+  return html;
+}
+
+// ============ 示例加载 ============
+function loadExample(n) {
+  clearAll();
+  document.getElementById('period-type').value = 'quarter';
+  document.getElementById('period-select').value = 'Q2';
+  switch(n) {
+    case 1: // 纯免税：普票202,000，合计=202,000（未开票=0）
+      document.getElementById('total-revenue').value = '202000';
+      document.getElementById('inv-normal-1pct').value = '202000';
+      document.getElementById('cost-main').value = '120000';
+      document.getElementById('exp-salary').value = '30000';
+      document.getElementById('exp-admin').value = '5000';
+      break;
+    case 2: // 超30万全额：普票404,000 + 专票1%含税50,500 + 未开票50,500，合计=505,000
+      document.getElementById('total-revenue').value = '505000';
+      document.getElementById('inv-normal-1pct').value = '404000';
+      document.getElementById('inv-special-1pct').value = '50500';
+      document.getElementById('cost-main').value = '300000';
+      document.getElementById('exp-salary').value = '60000';
+      document.getElementById('exp-admin').value = '15000';
+      document.getElementById('exp-sales').value = '10000';
+      break;
+    case 3: // 普票免税+专票：普票252,500 + 专票1%含税30,300，合计=282,800（未开票=0）
+      document.getElementById('total-revenue').value = '282800';
+      document.getElementById('inv-normal-1pct').value = '252500';
+      document.getElementById('inv-special-1pct').value = '30300';
+      document.getElementById('cost-main').value = '150000';
+      document.getElementById('exp-salary').value = '40000';
+      document.getElementById('exp-admin').value = '8000';
+      break;
+  }
+  autoCalcUnbilled();
+  calculate();
+}
+
+function clearAll() {
+  ['total-revenue','inv-normal-1pct','inv-special-1pct','inv-special-3pct','unbilled-1pct',
+   'cost-main','exp-salary','exp-admin','exp-sales','exp-finance','exp-other','exp-courier','exp-social','stamp-other','stamp-duty'].forEach(id => {
+    document.getElementById(id).value = '0';
+  });
+  document.getElementById('unbilled-1pct-display').value = '0.00';
+  document.getElementById('invoiced-total').value = '0.00';
+  document.getElementById('total-revenue-display').value = '0.00';
+  document.getElementById('invoiced-total-2').value = '0.00';
+  document.getElementById('unbilled-warning').style.display = 'none';
+  document.getElementById('stamp-sales-display').value = '0.00';
+  const techEl = document.getElementById('stamp-tech-display');
+  if (techEl) techEl.value = '0.00';
+  const transportEl2 = document.getElementById('stamp-transport-display');
+  if (transportEl2) transportEl2.value = '0.00';
+  document.getElementById('sales-stamp-on').checked = true;
+  document.getElementById('platform-is-tech').checked = true;
+  document.getElementById('courier-is-transport').checked = true;
+  document.getElementById('stamp-subtotal').value = '0.00';
+  document.getElementById('stamp-duty-display').value = '0.00';
+  document.getElementById('result-area').classList.add('hidden');
+  document.getElementById('empty-hint').style.display = '';
+}
+
+function fmt(n) {
+  return n.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// Tab 切换（内联 onclick，不受 DOM 重建影响）
+function switchTab(tabId, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+
+// 帮助面板切换
+function toggleHelp() {
+  const p = document.getElementById('help-panel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+// 按季/按月切换期间选项
+document.getElementById('period-type').addEventListener('change', function() {
+  const sel = document.getElementById('period-select');
+  if (this.value === 'month') {
+    sel.innerHTML = Array.from({length:12}, (_,i) => `<option value="M${i+1}">${i+1}月</option>`).join('');
+  } else {
+    sel.innerHTML = ['第一季度（1-3月）','第二季度（4-6月）','第三季度（7-9月）','第四季度（10-12月）']
+      .map((t,i) => `<option value="Q${i+1}">${t}</option>`).join('');
+  }
+});
+
+// ============ 导入 Excel ============
+function importExcel(input) {
+  if (typeof XLSX === 'undefined') { alert('Excel导入需要网络加载组件，请确保联网后刷新页面再试。'); return; }
+
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      // 用 XLSX.utils.sheet_to_json 直接转对象，自动取首行做 key
+      const json = XLSX.utils.sheet_to_json(ws, {defval:'', raw:false});
+      if (!json.length) {
+        // 降级：raw 读不到再试一次
+        const raw = XLSX.utils.sheet_to_json(ws, {defval:''});
+        if (!raw.length) { alert('Excel文件为空或格式不正确。'); return; }
+        return doImport(raw[0]);
+      }
+      return doImport(json[0]);
+
+      function doImport(row) {
+        const colMap = {};
+        const mappings = {
+          'total-revenue': '合计收入',
+          'inv-normal-1pct': '普票金额',
+          'inv-special-1pct': '专票金额1%',
+          'inv-special-3pct': '专票金额3%',
+          'cost-main': '主营业务成本',
+          'exp-salary': '工资薪金',
+          'exp-admin': '办公费用',
+          'exp-sales': '平台费用',
+          'exp-courier': '快递费',
+          'exp-social': '社保费',
+          'exp-finance': '财务费用',
+          'exp-other': '其他费用',
+          'stamp-other': '其他合同印花税',
+        };
+
+        const keys = Object.keys(row);
+        for (const [field, alias] of Object.entries(mappings)) {
+          for (const k of keys) {
+            const kk = String(k).trim();
+            if (kk === alias) { colMap[field] = k; break; }
+          }
+        }
+
+        if (!colMap['total-revenue']) {
+          const seen = keys.map(k => `"${k}"`).join('、');
+          alert(`未识别到"合计收入"列。\n\n模板表头应是：合计收入、普票金额、专票金额1%、专票金额3%、主营业务成本、工资薪金、办公费用、平台费用、快递费、社保费、财务费用、其他费用、其他合同印花税\n\n当前识别到的列名：${seen || '(空)'}\n\n建议点击"下载导入模板"获取标准格式。`);
+          return;
+        }
+
+        const getVal = (field) => {
+          const k = colMap[field];
+          if (!k) return 0;
+          const v = parseFloat(String(row[k]).replace(/[,，¥￥\s]/g,'')) || 0;
+          return Math.round(v * 100) / 100;
+        };
+
+        // 填入表单
+        document.getElementById('total-revenue').value = getVal('total-revenue');
+        document.getElementById('inv-normal-1pct').value = getVal('inv-normal-1pct');
+        document.getElementById('inv-special-1pct').value = getVal('inv-special-1pct');
+        document.getElementById('inv-special-3pct').value = getVal('inv-special-3pct');
+        document.getElementById('cost-main').value = getVal('cost-main');
+        document.getElementById('exp-salary').value = getVal('exp-salary');
+        document.getElementById('exp-admin').value = getVal('exp-admin');
+        document.getElementById('exp-sales').value = getVal('exp-sales');
+        document.getElementById('exp-courier').value = getVal('exp-courier');
+        document.getElementById('exp-social').value = getVal('exp-social');
+        document.getElementById('exp-finance').value = getVal('exp-finance');
+        document.getElementById('exp-other').value = getVal('exp-other');
+        document.getElementById('stamp-other').value = getVal('stamp-other');
+
+        autoCalcUnbilled();
+        autoCalcStampDuty();
+        calculate();
+
+        alert('✓ 导入成功，已自动核算。');
+        input.value = '';
+      }
+    } catch (err) {
+      alert('导入失败：' + err.message + '\n请使用"下载导入模板"获取标准格式。');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// 下载导入模板
+function downloadTemplate() {
+  if (typeof XLSX === 'undefined') { alert('需要联网加载组件，请刷新后再试。'); return; }
+  const headers = ['合计收入','普票金额','专票金额1%','专票金额3%','主营业务成本','工资薪金','办公费用','平台费用','快递费','社保费','财务费用','其他费用','其他合同印花税'];
+  const sample = [500000, 300000, 0, 0, 250000, 50000, 8000, 10000, 2000, 15000, 500, 3000, 0];
+  const ws = XLSX.utils.aoa_to_sheet([headers, sample]);
+  ws['!cols'] = headers.map(() => ({wch:16}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '数据');
+  XLSX.writeFile(wb, '小规模纳税人导入模板.xlsx');
+}
+
+// ============ 导出 Excel：税费明细 ============
+function exportTaxDetail() {
+  if (typeof XLSX === 'undefined') { alert('Excel导出需要网络加载组件，请确保联网后刷新页面再试。'); return; }
+  const d = window.taxData;
+  if (!d) { alert('请先生成计算结果再导出。'); return; }
+
+  const periodLabels = {Q1:'第一季度',Q2:'第二季度',Q3:'第三季度',Q4:'第四季度',
+    M1:'1月',M2:'2月',M3:'3月',M4:'4月',M5:'5月',M6:'6月',
+    M7:'7月',M8:'8月',M9:'9月',M10:'10月',M11:'11月',M12:'12月'};
+  const period = document.getElementById('period-select');
+  const periodText = periodLabels[period.value] || period.value;
+  const periodRule = d.periodType === 'quarter' ? '按季申报' : '按月申报';
+  const unit = '元';
+
+  const round2 = v => Math.round(v * 100) / 100;
+
+  // 购销合同印花税计税基础
+  const stampBaseSales = round2(d.totalRev + d.costMain);
+  const stampSalesFull = round2(stampBaseSales * 0.0003);
+
+  // 构建数据
+  // 美化 cell 函数
+  const cell = (v, bold, color) => {
+    const o = { t: 's', v: String(v ?? '') };
+    if (bold) o.s = { font: { bold: true, sz: bold === 'title' ? 14 : 11 } };
+    if (color) o.s = { ...o.s, font: { ...o.s?.font, color: { rgb: color } }, fill: { fgColor: { rgb: 'F5F6F8' }, patternType: 'solid' } };
+    return o;
+  };
+  const moneyCell = (v) => {
+    if (v === '' || v === undefined || v === null) return { t: 's', v: '' };
+    return { t: 'n', v: round2(v), z: '#,##0.00' };
+  };
+  const labelCell = (v, bold) => {
+    if (bold) return { t: 's', v: String(v), s: { font: { bold: true, sz: 11 } } };
+    return { t: 's', v: String(v ?? '') };
+  };
+  const headerCell = (v) => {
+    return { t: 's', v: String(v), s: { font: { bold: true, sz: 11, color: { rgb: '0984E3' } }, fill: { fgColor: { rgb: 'F0F4FF' }, patternType: 'solid' }, alignment: { horizontal: 'center' } } };
+  };
+
+  const rows = [
+    ['', '', '', '', '', '', '', ''].map(v => ({ t: 's', v: '' })),
+    ['应交税费明细表', ''].concat(new Array(5).fill('')).map(v => cell(v, 'title')),
+    [`期间：${periodText}（${periodRule}）`, '', '单位：元', '', '', '', ''].map(v => ({ t: 's', v: String(v ?? '') })),
+    ['序号','税种','计税基础(元)','税率/征收率','应纳税额(元)','减免额(元)','实缴税额(元)','备注'].map(v => headerCell(v)),
+    [1, '增值税', d.totalExcl1 + d.totalExcl3, d.invSpecial3 > 0 ? '1% / 3%' : '1%×3%', d.row15_num, d.row16_num, d.row22_num, d.isExempt && d.row22_num === 0 ? '未达起征点，免征' : '申报表口径：行15-行16=行22'].map((v,i) => i === 0 ? v : (i === 1 || i === 3 || i === 7) ? labelCell(v) : moneyCell(v)),
+    [2, '城市维护建设税', d.row22_num, '7%×50%', d.urbanTax, 0, d.urbanTax, '按行22，六税两费减半'].map((v,i) => i === 0 ? v : (i === 1 || i === 3 || i === 7) ? labelCell(v) : moneyCell(v)),
+    [3, '教育费附加', d.row22_num, '3%×50%', d.eduSurcharge, 0, d.eduSurcharge, '按行22，六税两费减半'].map((v,i) => i === 0 ? v : (i === 1 || i === 3 || i === 7) ? labelCell(v) : moneyCell(v)),
+    [4, '地方教育附加', d.row22_num, '2%×50%', d.localEduSurcharge, 0, d.localEduSurcharge, '按行22，六税两费减半'].map((v,i) => i === 0 ? v : (i === 1 || i === 3 || i === 7) ? labelCell(v) : moneyCell(v)),
+    [5, '印花税—购销合同', d.salesStampOn ? stampBaseSales : 0, '0.03%×50%', d.salesStampOn ? stampSalesFull : 0, d.salesStampOn ? stampSalesFull / 2 : 0, d.salesStampOn ? stampSalesFull / 2 : 0, d.salesStampOn ? '（收入含税+成本）×0.03%' : '未勾选购销合同'].map((v,i) => i === 0 ? v : (i === 1 || i === 3 || i === 7) ? labelCell(v) : moneyCell(v)),
+    [6, '印花税—技术合同', d.platformIsTech ? d.expSales : 0, '0.03%×50%', d.platformIsTech ? d.stampTech / 0.5 : 0, d.platformIsTech ? d.stampTech / 0.5 / 2 : 0, d.platformIsTech ? d.stampTech / 0.5 / 2 : 0, d.platformIsTech ? '平台费用' : '未勾选'].map((v,i) => i === 0 ? v : (i === 1 || i === 3 || i === 7) ? labelCell(v) : moneyCell(v)),
+    [7, '印花税—运输合同', d.courierIsTransport ? d.expCourier : 0, '0.03%×50%', d.courierIsTransport ? d.stampTransport / 0.5 : 0, d.courierIsTransport ? d.stampTransport / 0.5 / 2 : 0, d.courierIsTransport ? d.stampTransport / 0.5 / 2 : 0, d.courierIsTransport ? '快递费' : '未勾选'].map((v,i) => i === 0 ? v : (i === 1 || i === 3 || i === 7) ? labelCell(v) : moneyCell(v)),
+    [8, '印花税—其他合同', d.stampOther, '按合同类型', d.stampOther, d.stampOther / 2, d.stampOther / 2, '六税两费减半'].map((v,i) => i === 0 ? v : (i === 1 || i === 3 || i === 7) ? labelCell(v) : moneyCell(v)),
+    [9, '企业所得税', d.totalProfit, (d.incomeTaxRate * 100).toFixed(0) + '%', d.incomeTax, 0, d.incomeTax, d.isSmallBiz ? '小微企业优惠 实际5%' : `年化¥${round2(d.annualizedProfit).toLocaleString()}`].map((v,i) => i === 0 ? v : (i === 1 || i === 3 || i === 7) ? labelCell(v) : moneyCell(v)),
+    ['', '', '', '', '', '', '', ''].map(v => ({ t: 's', v: '' })),
+    ['', '合计', '', '', d.row15_num + d.urbanTax + d.eduSurcharge + d.localEduSurcharge + stampSalesFull + d.stampTech + d.stampTransport + d.stampOther + d.incomeTax, d.row16_num + stampSalesFull / 2 + d.stampTech / 2 + d.stampTransport / 2 + d.stampOther / 2, d.row22_num + d.totalSurcharge + d.stampDuty + d.incomeTax, d.totalProfit <= 0 ? '本期亏损，所得税为0' : ''].map((v,i) => i === 0 ? labelCell(v, true) : (i === 1 || i === 7) ? labelCell(v, true) : moneyCell(v)),
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // 合并标题行
+  ws['!merges'] = [
+    {s:{r:1,c:0}, e:{r:1,c:7}},  // 标题
+    {s:{r:2,c:0}, e:{r:2,c:2}},  // 期间
+    {s:{r:12,c:0}, e:{r:12,c:7}}, // 合计行标签空白
+  ];
+
+  // 列宽
+  ws['!cols'] = [
+    {wch:6}, {wch:22}, {wch:16}, {wch:14}, {wch:16}, {wch:14}, {wch:16}, {wch:36}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '应交税费明细');
+
+  const filename = `应交税费明细_${periodText}.xlsx`;
+  XLSX.writeFile(wb, filename);
+}
+
+// ============ 导出 Excel：利润表 ============
+function exportProfitTable() {
+  const d = window.taxData;
+  if (!d) { alert('请先点击「生成凭证 & 申报表」按钮计算，再导出。'); return; }
+
+  const periodLabels = {Q1:'第一季度',Q2:'第二季度',Q3:'第三季度',Q4:'第四季度',
+    M1:'1月',M2:'2月',M3:'3月',M4:'4月',M5:'5月',M6:'6月',
+    M7:'7月',M8:'8月',M9:'9月',M10:'10月',M11:'11月',M12:'12月'};
+  const period = document.getElementById('period-select');
+  const periodText = periodLabels[period.value] || period.value;
+  const periodRule = d.periodType === 'quarter' ? '按季申报' : '按月申报';
+
+  const round2 = v => Math.round(v * 100) / 100;
+  const revNet = round2(d.revenueNet);
+
+  const cell2 = (v, bold, sz) => ({ t: 's', v: String(v ?? ''), s: bold ? { font: { bold: true, sz: sz || 11 } } : undefined });
+  const hdr2 = (v) => ({ t: 's', v: String(v), s: { font: { bold: true, sz: 11, color: { rgb: '0984E3' } }, fill: { fgColor: { rgb: 'F0F4FF' }, patternType: 'solid' } } });
+  const num2 = (v) => ({ t: 'n', v: round2(v), z: '#,##0.00' });
+  // 利润表行：A项目/B行次/C金额/D说明 — 只有 i=2 是数字
+  const row4 = (label, num, desc, bold) => [label, '—', num, desc].map((v,i) => i === 2 ? num2(v) : (bold && i === 0) ? cell2(v, true) : cell2(v));
+  const row4n = (label, line, num, desc, bold) => [label, line, num, desc].map((v,i) => i === 2 ? num2(v) : (bold && i === 0) ? cell2(v, true) : cell2(v));
+
+  const rows = [
+    ['', '', '', ''].map(v => ({ t: 's', v: '' })),
+    ['利润表', '', '', ''].map(v => cell2(v, 'title', 14)),
+    [`期间：${periodText}（${periodRule}）`, '', '单位：元', ''].map(v => ({ t: 's', v: String(v ?? '') })),
+    ['项目', '行次', '本期金额', '计算说明'].map(v => hdr2(v)),
+    row4n('一、营业收入', '1', revNet, '不含税销售额', true),
+    row4n('  减：营业成本', '2', d.costMain, '主营业务成本'),
+    row4('  毛利', d.grossProfit, '收入 - 成本', true),
+    row4n('  减：税金及附加', '3', d.totalTaxAndSurcharge, `附加税 ¥${round2(d.totalSurcharge)} + 印花税 ¥${round2(d.stampDuty)}`),
+    row4n('    其中：城建税', '3-1', d.urbanTax, '7%×50%'),
+    row4n('    其中：教育费附加', '3-2', d.eduSurcharge, '3%×50%'),
+    row4n('    其中：地方教育附加', '3-3', d.localEduSurcharge, '2%×50%'),
+    row4n('    其中：印花税', '3-4', d.stampDuty, '购销+技术+运输+其他，减半征收'),
+    row4n('  减：管理费用', '4', d.adminExpTotal, `办公 ¥${round2(d.expAdmin)} + 工资 ¥${round2(d.expSalary)} + 社保 ¥${round2(d.expSocial)}`),
+    row4n('  减：销售费用', '5', d.salesExpTotal, `平台 ¥${round2(d.expSales)} + 快递 ¥${round2(d.expCourier)}`),
+    row4n('  减：财务费用', '6', d.expFinance, ''),
+    row4n('  减：其他费用', '7', d.expOther, ''),
+    row4('  加：其他收益（免税结转）', d.otherIncome || 0, '免税额转入其他收益'),
+    row4n('二、营业利润', '8', d.operatingProfit || d.totalProfit, '毛利 - 税金及附加 - 各项费用', true),
+    row4n('  加：营业外收入', '8-1', d.nonopIncome || 0, '非经营性收入'),
+    row4n('  减：营业外支出', '8-2', d.nonopExpense || 0, '非经营性支出'),
+    row4n('三、利润总额', '8-3', d.totalProfit, '营业利润 + 营业外收入 - 营业外支出', true),
+    row4n('  减：所得税费用', '9', d.incomeTax || 0, d.isSmallBiz ? '小微企业优惠：实际5%' : '法定25%'),
+    row4n('四、净利润', '10', d.netProfit || 0, '利润总额 - 所得税', true),
+    ['', '', '', ''].map(v => ({ t: 's', v: '' })),
+    ['备注：', '', '', ''].map(v => ({ t: 's', v: String(v ?? '') })),
+    ['', '', d.isSmallBiz ? '✅ 符合小微企业条件，享受所得税优惠（年化≤300万，实际税率5%）' : (d.totalProfit > 0 ? '❌ 不符合小微企业条件，按25%计税' : '本期亏损，所得税为0'), ''].map(v => ({ t: 's', v: String(v ?? '') })),
+    ['', '', d.periodType === 'quarter' ? `年化利润估算：¥${round2(d.annualizedProfit).toLocaleString()}（=本期利润×4）` : `年化利润估算：¥${round2(d.annualizedProfit).toLocaleString()}（=本期利润×12）`, ''].map(v => ({ t: 's', v: String(v ?? '') })),
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!merges'] = [
+    {s:{r:1,c:0}, e:{r:1,c:3}},   // 标题
+    {s:{r:2,c:0}, e:{r:2,c:2}},   // 期间
+  ];
+  ws['!cols'] = [{wch:24}, {wch:8}, {wch:18}, {wch:50}];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '利润表');
+
+  const filename = `利润表_${periodText}.xlsx`;
+  XLSX.writeFile(wb, filename);
+}
+</script>
+<div style="text-align:center; padding:20px 0; color:var(--text-secondary); font-size:12px; opacity:0.7;">
+  工具开发者公众号：<strong>致会计</strong> &nbsp;|&nbsp; 适配2026年《增值税法》新政 &nbsp;|&nbsp; 非正式申报工具，仅供核算参考<br>
+  Excel导出依赖网络加载xlsx库，离线使用请确保首次联网打开一次
+</div>
+</body>
+</html>
