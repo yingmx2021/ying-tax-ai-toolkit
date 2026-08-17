@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>财务数据脱敏器 730版</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" onerror="this.onerror=null;this.src='https://cdn.staticfile.org/xlsx/0.18.5/xlsx.full.min.js'"></script>
+<style>
+:root {
+  --primary: #E84B37; --primary-hover: #C43A2B;
+  --success: #27AE60; --success-hover: #219A52;
+  --info: #3498DB; --info-hover: #2980B9;
+  --warning: #F39C12; --danger: #E74C3C;
+  --border: #E0E0E0; --bg: #F5F6FA; --white: #fff;
+  --text: #2D2D2D; --text2: #666; --text3: #999;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Microsoft YaHei',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+.header { background:var(--primary); color:#fff; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; }
+.header h1 { font-size:18px; } .header span { font-size:12px; opacity:.8; }
+.container { max-width:1100px; margin:0 auto; padding:20px; display:flex; flex-direction:column; gap:14px; }
+.card { background:var(--white); border:1px solid var(--border); border-radius:10px; padding:18px; }
+.card-title { font-size:15px; font-weight:bold; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+
+.upload-zone { border:2px dashed var(--border); border-radius:8px; padding:24px; text-align:center; cursor:pointer; transition:.2s; }
+.upload-zone:hover { border-color:var(--primary); background:#FFF5F5; }
+.upload-zone .icon { font-size:36px; }
+.upload-zone .title { font-size:14px; font-weight:bold; margin-top:8px; }
+.upload-zone .hint { color:var(--text3); font-size:12px; margin-top:4px; }
+.hidden { display:none !important; }
+
+.file-info { display:flex; align-items:center; gap:10px; padding:10px 14px; background:#F0FFF4; border-radius:6px; margin-top:10px; }
+.file-info .name { font-weight:bold; color:var(--success); }
+.file-info .meta { color:var(--text2); font-size:12px; }
+
+/* 工作表标签 */
+.sheet-tab { display:flex; align-items:center; gap:6px; padding:6px 14px; border-radius:6px; background:var(--bg); cursor:pointer; border:2px solid transparent; font-size:13px; transition:.15s; user-select:none; }
+.sheet-tab.active { border-color:var(--primary); background:#FFF5F5; }
+.sheet-tab .done-tag { color:var(--success); font-size:11px; }
+
+.settings-row { display:flex; gap:20px; align-items:center; flex-wrap:wrap; }
+.setting-item { display:flex; align-items:center; gap:8px; }
+.setting-item label { font-size:13px; color:var(--text2); white-space:nowrap; }
+.setting-item input[type=range] { width:140px; }
+.setting-item .val { font-weight:bold; color:var(--success); min-width:50px; font-size:13px; }
+.setting-item input[type=number] { width:75px; border:1px solid var(--border); border-radius:4px; padding:4px 8px; font-size:13px; }
+
+.cols-grid { display:flex; flex-wrap:wrap; gap:6px; }
+.col-item { display:flex; align-items:center; gap:5px; padding:5px 10px; border-radius:6px; background:var(--bg); cursor:pointer; font-size:12px; border:2px solid transparent; transition:.15s; user-select:none; }
+.col-item:hover { border-color:var(--primary); }
+.col-item.checked { border-color:var(--primary); background:#FFF5F5; }
+.col-badge { padding:1px 7px; border-radius:4px; color:#fff; font-size:10px; font-weight:bold; }
+.col-badge.name { background:#E84B37; } .col-badge.amount { background:#27AE60; }
+.col-badge.date { background:#3498DB; } .col-badge.id { background:#F39C12; }
+.col-badge.text { background:#8E44AD; } .col-badge.keep { background:#95A5A6; } .col-badge.other { background:#BDC3C7; }
+
+.table-wrap { overflow-x:auto; max-height:380px; }
+.data-table { width:100%; border-collapse:collapse; font-size:12px; }
+.data-table th { background:#2C3E50; color:#fff; padding:6px 8px; text-align:left; white-space:nowrap; position:sticky; top:0; z-index:1; }
+.data-table td { padding:5px 8px; border-bottom:1px solid var(--border); white-space:nowrap; max-width:180px; overflow:hidden; text-overflow:ellipsis; }
+.data-table tr:nth-child(even) td { background:#F8F9FA; }
+
+.btn-row { display:flex; gap:10px; flex-wrap:wrap; }
+.btn { padding:10px 22px; border:none; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer; transition:.15s; font-family:inherit; }
+.btn:disabled { opacity:.4; cursor:not-allowed; }
+.btn-primary { background:var(--primary); color:#fff; } .btn-primary:hover:not(:disabled) { background:var(--primary-hover); }
+.btn-success { background:var(--success); color:#fff; } .btn-success:hover:not(:disabled) { background:var(--success-hover); }
+.btn-info { background:var(--info); color:#fff; } .btn-info:hover:not(:disabled) { background:var(--info-hover); }
+.btn-outline { background:#fff; color:var(--text2); border:1px solid var(--border); } .btn-outline:hover:not(:disabled) { background:var(--bg); }
+
+.progress-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+.progress-fill { height:100%; background:var(--success); border-radius:3px; transition:width .3s; width:0; }
+
+.log { background:#1B2A4A; color:#A8D8EA; border-radius:8px; padding:14px; font-size:12px; font-family:'Consolas','Courier New',monospace; max-height:160px; overflow-y:auto; line-height:1.6; }
+.log .ok { color:#27AE60; } .log .warn { color:#F39C12; } .log .err { color:#E74C3C; }
+
+.stats-grid { display:flex; gap:12px; flex-wrap:wrap; }
+.stat-item { flex:1; min-width:120px; background:var(--bg); border-radius:8px; padding:12px; text-align:center; }
+.stat-item .num { font-size:22px; font-weight:bold; color:var(--primary); }
+.stat-item .label { font-size:11px; color:var(--text2); margin-top:4px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🔐 财务数据脱敏器 730版</h1>
+  <span>支持多工作表 | 全部数据浏览器本地处理，不上传云端</span>
+</div>
+
+<div class="container">
+  <!-- 上传 -->
+  <div class="card">
+    <div class="card-title">📁 选择文件</div>
+    <div id="dropZone" class="upload-zone">
+      <div class="icon">📂</div>
+      <div class="title">拖拽文件到此处 或 点击选择</div>
+      <div class="hint">支持 Excel (.xlsx/.xls) 和 CSV (.csv)</div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+    </div>
+    <div id="fileInfo" class="file-info hidden">
+      <span>✅</span>
+      <span class="name" id="fileName"></span>
+      <span class="meta" id="fileMeta"></span>
+    </div>
+  </div>
+
+  <!-- 工作表选择 -->
+  <div class="card hidden" id="sheetCard">
+    <div class="card-title">📑 工作表 <span style="font-size:12px;color:var(--text3);font-weight:normal;">（点击标签切换预览，勾选决定是否处理）</span></div>
+    <div id="sheetTabs" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+  </div>
+
+  <!-- 设置 -->
+  <div class="card">
+    <div class="card-title">⚙️ 脱敏参数（应用到所有工作表）</div>
+    <div class="settings-row">
+      <div class="setting-item">
+        <label>金额缩放因子：</label>
+        <input type="range" id="scaleFactor" min="10" max="200" value="80" step="1">
+        <span class="val" id="scaleVal">0.80 x</span>
+      </div>
+      <div class="setting-item">
+        <label>日期偏移：</label>
+        <input type="number" id="dateShift" value="-30">
+        <label>天</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- 列检测 -->
+  <div class="card">
+    <div class="card-title">📋 检测到的列 <span style="font-size:12px;color:var(--text3);font-weight:normal;">（点击标签切换勾选）</span></div>
+    <label style="cursor:pointer;font-size:13px;margin-bottom:8px;display:inline-block;">
+      <input type="checkbox" id="selectAll" checked onchange="toggleAllCols()"> 全选 / 取消全选
+    </label>
+    <div class="cols-grid" id="colsGrid"><span style="color:var(--text3);">请先选择文件</span></div>
+  </div>
+
+  <!-- 预览 -->
+  <div class="card">
+    <div class="card-title">👁 数据预览（前10行）</div>
+    <div class="table-wrap" id="previewWrap">
+      <p style="color:var(--text3);text-align:center;padding:40px;">请先选择文件</p>
+    </div>
+  </div>
+
+  <!-- 按钮 -->
+  <div class="btn-row">
+    <button class="btn btn-info" id="btnPreview" disabled onclick="doPreview()">👁 预览当前工作表效果</button>
+    <button class="btn btn-success" id="btnExecute" disabled onclick="doBatchExecute()">✅ 批量脱敏（勾选的工作表）</button>
+    <button class="btn btn-primary" id="btnDownload" disabled onclick="doDownload()">💾 下载脱敏文件</button>
+    <button class="btn btn-outline" id="btnMapping" disabled onclick="doDownloadMapping()">📋 下载映射表</button>
+    <button class="btn btn-outline" onclick="doReset()" style="margin-left:auto;">🔄 重置</button>
+  </div>
+
+  <div class="progress-bar" id="progressBar" style="display:none;"><div class="progress-fill" id="progressFill"></div></div>
+  <div class="stats-grid" id="statsGrid" style="display:none;"></div>
+
+  <div class="card">
+    <div class="card-title">📝 处理日志</div>
+    <div class="log" id="logArea">财务数据脱敏器 730版 已就绪，支持多工作表。请选择文件 →</div>
+  </div>
+
+  <div style="text-align:center;color:var(--text3);font-size:12px;padding:4px 0 10px;">工具开发者公众号：<b>致会计</b></div>
+</div>
+
+<script>
+// ==================== 脱敏引擎 ====================
+const NAME_KW=["销售方","购买方","供应商","客户","对方单位","收款人","付款人","销方","购方","单位名称","公司名称","对方","商户","门店","供应商名称","客户名称","对方账户名","户名","对方名称","员工姓名","姓名","报销人","开票方","受票方","甲方","乙方"];
+const AMOUNT_KW=["金额","税额","价税合计","余额","借方","贷方","发生额","不含税","含税","本金","利息","手续费","合计","小计","收入","支出","费用","成本","应收","应付","预收","预付","原值","净值","折旧","工资","薪","奖金","补贴","期初","期末","本年","上年","累计","单价"];
+const DATE_KW=["日期","开票","记账","发生","交易","入账","到期","制单","审核","入库","出库","报销","审批","起始","结束"];
+const ID_KW=["发票代码","发票号码","凭证号","凭证编号","单号","流水号","资产编号","合同编号","编号"];
+const TEXT_KW=["摘要","备注","说明","用途","描述","事项","内容","品名","货物","明细"];
+const KEEP_KW=["税率","科目代码","科目编号","科目名称","方向","币种","计量单位","规格","型号","部门","项目"];
+const TYPE_BADGE={name:"名称",amount:"金额",date:"日期",id:"编号",text:"文本",keep:"保留",other:"其他"};
+
+function detectColType(n){const s=String(n);for(const k of KEEP_KW)if(s.includes(k))return"keep";for(const k of NAME_KW)if(s.includes(k))return"name";for(const k of AMOUNT_KW)if(s.includes(k))return"amount";for(const k of DATE_KW)if(s.includes(k))return"date";for(const k of ID_KW)if(s.includes(k))return"id";for(const k of TEXT_KW)if(s.includes(k))return"text";return"other";}
+function getPrefix(n){const s=String(n);if(/供应商|销售方|销方|商户|门店|开票方|乙方/.test(s))return"供应商";if(/客户|购买方|购方|受票方|甲方/.test(s))return"客户";if(/收款人|付款人|对方|户名/.test(s))return"交易方";if(/员工|姓名|报销人/.test(s))return"员工";return"单位";}
+function toAlpha(n){let r="";while(n>0){n--;r=String.fromCharCode(65+n%26)+r;n=Math.floor(n/26);}return r;}
+
+class Anonymizer{
+  constructor(sf,ds){this.sf=sf;this.ds=ds;this.nm={};this.im={};this.nc={};this.st={n:0,a:0,d:0,i:0,t:0};}
+  anonName(v,cn){if(v==null||v==="")return v;const k=String(v).trim();if(!k)return v;if(!(k in this.nm)){const p=getPrefix(cn);this.nc[p]=(this.nc[p]||0)+1;this.nm[k]=p+toAlpha(this.nc[p]);}this.st.n++;return this.nm[k];}
+  anonAmt(v){if(v==null||v===0||v==="")return v;const n=parseFloat(v);if(isNaN(n)||n===0)return v;const s=n*this.sf,no=0.98+Math.random()*0.04;this.st.a++;return Math.round(s*no*100)/100;}
+  anonDate(v){if(v==null||v==="")return v;let d;if(typeof v==="number")d=new Date((v-25569)*86400*1000);else d=new Date(String(v));if(isNaN(d.getTime()))return v;d.setDate(d.getDate()+this.ds);this.st.d++;return d.toISOString().split("T")[0];}
+  anonId(v){if(v==null||v==="")return v;const k=String(v).trim();if(!k)return v;if(!(k in this.im)){let n="";for(let i=0;i<k.length;i++)n+=String(Math.floor(Math.random()*10));this.im[k]=n;}this.st.i++;return this.im[k];}
+  cleanText(v){if(v==null||v==="")return v;let t=String(v);for(const[r,f]of Object.entries(this.nm))t=t.replaceAll(r,f);t=t.replace(/¥?\d[\d,.]*元?/g,m=>m.replace(/[\d,.]/g,"X"));this.st.t++;return t;}
+}
+
+// ==================== 界面状态 ====================
+const S={fn:null,sheets:{},names:[],active:null,enabled:{},cols:[],wb:null};
+
+function log(msg,cls=""){const e=document.getElementById("logArea");e.innerHTML+=`<div class="${cls}">[${new Date().toLocaleTimeString("zh-CN")}] ${msg}</div>`;e.scrollTop=e.scrollHeight;}
+
+// ==================== 文件处理 ====================
+const dz=document.getElementById("dropZone"),fi=document.getElementById("fileInput");
+dz.onclick=()=>fi.click();
+dz.ondragover=e=>{e.preventDefault();dz.classList.add("active");};
+dz.ondragleave=()=>dz.classList.remove("active");
+dz.ondrop=e=>{e.preventDefault();dz.classList.remove("active");if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);};
+fi.onchange=e=>{if(e.target.files[0])loadFile(e.target.files[0]);};
+
+function loadFile(file){
+  const r=new FileReader();
+  r.onload=function(e){
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:"array",cellDates:true,dateNF:"yyyy-mm-dd",cellFormula:false});
+      S.wb=wb; // 保存原始工作簿（含格式）
+      S.sheets={};S.names=[];S.enabled={};let tr=0;
+      for(const nm of wb.SheetNames){
+        const ws=wb.Sheets[nm],json=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true});
+        if(json.length<2)continue;
+        const hd=json[0].map(h=>String(h)),rows=json.slice(1);
+        S.sheets[nm]={hd,rows,types:hd.map(h=>detectColType(h)),result:null,anon:null,wsRef:ws};
+        S.names.push(nm);S.enabled[nm]=true;tr+=rows.length;
+      }
+      if(!S.names.length){alert("未检测到有效数据");return;}
+      S.fn=file.name;S.active=S.names[0];
+      document.getElementById("fileName").textContent=file.name;
+      document.getElementById("fileMeta").textContent=S.names.length+"个工作表，共"+tr+"行数据";
+      document.getElementById("fileInfo").classList.remove("hidden");
+      renderTabs();switchSheet(S.active);
+      document.getElementById("btnPreview").disabled=false;
+      document.getElementById("btnExecute").disabled=false;
+      log("加载成功："+S.names.length+"个工作表","ok");
+    }catch(err){log("加载失败："+err.message,"err");}
+  };
+  r.readAsArrayBuffer(file);
+}
+
+// ==================== 工作表切换 ====================
+function renderTabs(){
+  document.getElementById("sheetCard").classList.remove("hidden");
+  const ct=document.getElementById("sheetTabs");ct.innerHTML="";
+  S.names.forEach(nm=>{
+    const s=S.sheets[nm],d=document.createElement("div");
+    d.className="sheet-tab"+(nm===S.active?" active":"");
+    d.innerHTML=`<input type="checkbox" ${S.enabled[nm]?"checked":""} onclick="event.stopPropagation();S.enabled['${nm}']=!S.enabled['${nm}'];renderTabs();"><b>📄 ${nm}</b><span style="color:var(--text3);font-size:11px;">(${s.rows.length}行)</span>${s.result?'<span class="done-tag">✓已脱敏</span>':''}`;
+    d.onclick=e=>{if(e.target.tagName!=="INPUT")switchSheet(nm);};
+    ct.appendChild(d);
+  });
+}
+function switchSheet(nm){
+  S.active=nm;const s=S.sheets[nm];
+  // 从sheet对象重读（处理后的数据）
+  const json=XLSX.utils.sheet_to_json(s.wsRef,{header:1,defval:"",raw:true});
+  s.hd=json[0].map(h=>String(h));s.rows=json.slice(1);
+  S.cols=s.hd.map((h,i)=>({name:h,type:s.types[i],checked:s.types[i]!=="keep"&&s.types[i]!=="other"}));
+  renderCols();showPreview(s.rows,s.hd);
+  if(s.result){document.getElementById("btnDownload").disabled=false;document.getElementById("btnMapping").disabled=false;}
+  renderTabs();
+}
+
+// ==================== 列选择 ====================
+function renderCols(){
+  const g=document.getElementById("colsGrid");g.innerHTML="";
+  S.cols.forEach(c=>{
+    const d=document.createElement("div");
+    d.className="col-item "+(c.checked?"checked":"");
+    d.onclick=()=>{c.checked=!c.checked;d.classList.toggle("checked");updateSelectAll();};
+    d.innerHTML=`<span class="col-badge ${c.type}">${TYPE_BADGE[c.type]||c.type}</span> ${c.name}`;
+    g.appendChild(d);
+  });
+  updateSelectAll();
+}
+function toggleAllCols(){const ck=document.getElementById("selectAll").checked;S.cols.forEach(c=>c.checked=ck);renderCols();}
+function updateSelectAll(){document.getElementById("selectAll").checked=S.cols.every(c=>c.checked);}
+
+// ==================== 预览 ====================
+function showPreview(rows,hd){
+  const w=document.getElementById("previewWrap"),pv=rows.slice(0,10);
+  let h='<table class="data-table"><thead><tr><th>#</th>';
+  hd.forEach(x=>h+=`<th>${x}</th>`);h+='</tr></thead><tbody>';
+  pv.forEach((r,i)=>{h+=`<tr><td>${i+1}</td>`;r.forEach(v=>h+=`<td>${v==null||v===""?"":String(v)}</td>`);h+='</tr>';});
+  h+='</tbody></table>';w.innerHTML=h;
+}
+
+// ==================== 脱敏执行 ====================
+function getSel(){const m={};S.cols.forEach(c=>{if(c.checked)m[c.name]=c.type;});return m;}
+
+function doPreview(){
+  const sf=parseInt(document.getElementById("scaleFactor").value)/100;
+  const ds=parseInt(document.getElementById("dateShift").value);
+  const sel=getSel();if(!Object.keys(sel).length){alert("请至少勾选一列");return;}
+  const s=S.sheets[S.active],a=new Anonymizer(sf,ds);
+  // 从sheet对象读取原始数据用于预览
+  const json=XLSX.utils.sheet_to_json(s.wsRef,{header:1,defval:"",raw:true});
+  const hd=json[0].map(h=>String(h)),rows=json.slice(1);
+  const pv=rows.slice(0,10).map(r=>[...r]);
+  applyDesen(pv,hd,sel,a);showPreview(pv,hd);
+  log("预览：缩放 "+sf.toFixed(2)+"x  偏移 "+ds+"天（不改变原始数据）");
+}
+
+function doBatchExecute(){
+  const sf=parseInt(document.getElementById("scaleFactor").value)/100;
+  const ds=parseInt(document.getElementById("dateShift").value);
+  const sel=getSel();if(!Object.keys(sel).length){alert("至少勾选一列");return;}
+  const tp=S.names.filter(n=>S.enabled[n]);
+  if(!tp.length){alert("没有勾选要处理的工作表");return;}
+  if(!confirm("将对 "+tp.length+" 个工作表执行脱敏，继续？"))return;
+
+  const pb=document.getElementById("progressBar"),pf=document.getElementById("progressFill");
+  pb.style.display="block";document.getElementById("btnExecute").disabled=true;
+  let tn=0,ta=0,td=0,ti=0,tt=0,tm=0;
+
+  tp.forEach((nm,idx)=>{
+    const s=S.sheets[nm],a=new Anonymizer(sf,ds);
+    const ws=s.wsRef; // 直接操作sheet对象，保留格式
+
+    // 先转json获取行列对应关系
+    const json=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true});
+    const hd=json[0].map(h=>String(h));
+
+    // 建立 列名→列序号 映射
+    const colMap={};hd.forEach((h,i)=>{if(sel[h])colMap[i]=sel[h];});
+
+    // 遍历数据行（从第2行开始，第1行是表头）
+    const range=XLSX.utils.decode_range(ws["!ref"]||"A1");
+    for(let r=range.s.r+1;r<=range.e.r;r++){ // 跳过表头行
+      for(let c=range.s.c;c<=range.e.c;c++){
+        const type=colMap[c];if(!type)continue;
+        const addr=XLSX.utils.encode_cell({r,c});
+        const cell=ws[addr];if(!cell||cell.v===undefined)continue;
+        try{
+          const colName=hd[c]||"";
+          switch(type){
+            case"name":cell.v=a.anonName(cell.v,hd[c]);tn++;break;
+            case"amount":{const r=a.anonAmt(cell.v);if(r!==cell.v){cell.v=r;cell.t="n";ta++;}}break;
+            case"date":{const r=a.anonDate(cell.v);if(r!==cell.v){cell.v=r;cell.t="s";td++;}}break;
+            case"id":cell.v=a.anonId(cell.v);ti++;break;
+            case"text":cell.v=a.cleanText(cell.v);tt++;break;
+          }
+        }catch(e){}
+      }
+    }
+    s.result=true;s.anon=a;tm+=Object.keys(a.nm).length;
+    log("  ["+nm+"] "+json.slice(1).length+"行  名称"+a.st.n+"  金额"+a.st.a,"ok");
+    pf.style.width=((idx+1)/tp.length*100)+"%";
+  });
+
+  // 重新导出当前sheet的预览数据
+  S.active=tp[0];
+  const as=S.sheets[S.active],asJson=XLSX.utils.sheet_to_json(as.wsRef,{header:1,defval:"",raw:true});
+  as.hd=asJson[0].map(h=>String(h));as.rows=asJson.slice(1);
+  switchSheet(S.active);S.cols.forEach(c=>c.checked=false);renderCols();
+
+  pb.style.display="none";pf.style.width="0";
+  document.getElementById("btnExecute").disabled=false;
+  document.getElementById("btnDownload").disabled=false;
+  document.getElementById("btnMapping").disabled=false;
+  log("✅ 脱敏完成："+tp.length+"个表  名称"+tn, "ok");
+  document.getElementById("statsGrid").style.display="flex";
+  document.getElementById("statsGrid").innerHTML=`
+    <div class="stat-item"><div class="num">${tp.length}</div><div class="label">工作表</div></div>
+    <div class="stat-item"><div class="num">${tn}</div><div class="label">名称脱敏</div></div>
+    <div class="stat-item"><div class="num">${ta}</div><div class="label">金额缩放</div></div>
+    <div class="stat-item"><div class="num">${td}</div><div class="label">日期偏移</div></div>
+    <div class="stat-item"><div class="num">${tm}</div><div class="label">名称映射</div></div>`;
+}
+
+function applyDesen(rows,hd,sel,a){
+  for(let i=0;i<rows.length;i++)for(let j=0;j<hd.length;j++){
+    const t=sel[hd[j]];if(!t)continue;const v=rows[i][j];
+    try{switch(t){case"name":rows[i][j]=a.anonName(v,hd[j]);break;case"amount":rows[i][j]=a.anonAmt(v);break;case"date":rows[i][j]=a.anonDate(v);break;case"id":rows[i][j]=a.anonId(v);break;case"text":rows[i][j]=a.cleanText(v);break;}}catch(e){}
+  }
+}
+
+// ==================== 下载 ====================
+function doDownload(){
+  if(!S.wb){alert("没有可下载的数据");return;}
+  // 直接写入原始工作簿（所有sheet已在doBatchExecute中原地修改）
+  XLSX.writeFile(S.wb,S.fn.replace(/\.\w+$/,"")+"_脱敏.xlsx",{bookType:"xlsx",type:"array",cellStyles:true});
+  log("✅ 脱敏文件已下载（保留原始格式）","ok");
+}
+function doDownloadMapping(){
+  const wb=XLSX.utils.book_new(),all=[["工作表","原始名称","脱敏后名称"]];
+  S.names.forEach(nm=>{const a=S.sheets[nm].anon;if(!a||!Object.keys(a.nm).length)return;const r=[["原始名称","脱敏后名称"]];for(const[k,v]of Object.entries(a.nm)){r.push([k,v]);all.push([nm,k,v]);}XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(r),nm+"_名称");});
+  if(all.length>1)XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(all),"全部映射");
+  XLSX.writeFile(wb,S.fn.replace(/\.\w+$/,"")+"_映射表.xlsx");
+  log("✅ 映射表已下载","warn");
+}
+
+// ==================== 设置 & 重置 ====================
+document.getElementById("scaleFactor").oninput=function(){document.getElementById("scaleVal").textContent=(this.value/100).toFixed(2)+" x";};
+function doReset(){
+  S.fn=null;S.sheets={};S.names=[];S.active=null;S.enabled={};S.cols=[];S.wb=null;
+  document.getElementById("fileInfo").classList.add("hidden");
+  document.getElementById("sheetCard").classList.add("hidden");
+  document.getElementById("sheetTabs").innerHTML="";
+  document.getElementById("previewWrap").innerHTML='<p style="color:var(--text3);text-align:center;padding:40px;">请先选择文件</p>';
+  document.getElementById("colsGrid").innerHTML='<span style="color:var(--text3);">请先选择文件</span>';
+  ["btnPreview","btnExecute","btnDownload","btnMapping"].forEach(id=>document.getElementById(id).disabled=true);
+  document.getElementById("statsGrid").style.display="none";
+  document.getElementById("logArea").innerHTML="";
+  log("已重置，请选择文件");
+}
+</script>
+</body>
+</html>
